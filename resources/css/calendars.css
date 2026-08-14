@@ -1,0 +1,126 @@
+/**
+ * Shared styles for reservation / inventory calendar grids.
+ */
+
+.kuturogi-calendar {
+    overflow-x: auto;
+    border-radius: 0.75rem;
+    border: 1px solid rgb(229 231 235);
+}
+
+.dark .kuturogi-calendar {
+    border-color: rgb(55 65 81);
+}
+
+.kuturogi-calendar__table {
+    width: 100%;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.kuturogi-calendar__table thead tr {
+    background-color: rgb(249 250 251);
+}
+
+.dark .kuturogi-calendar__table thead tr {
+    background-color: rgb(31 41 55);
+}
+
+.kuturogi-calendar__table th,
+.kuturogi-calendar__table td {
+    padding: 0.5rem 0.75rem;
+    white-space: nowrap;
+}
+
+.kuturogi-calendar__table th:first-child,
+.kuturogi-calendar__table td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background-color: rgb(249 250 251);
+    font-weight: 500;
+    text-align: left;
+}
+
+.dark .kuturogi-calendar__table th:first-child,
+.dark .kuturogi-calendar__table td:first-child {
+    background-color: rgb(31 41 55);
+}
+
+.kuturogi-calendar__table tbody tr {
+    border-top: 1px solid rgb(243 244 246);
+}
+
+.dark .kuturogi-calendar__table tbody tr {
+    border-top-color: rgb(55 65 81);
+}
+
+.kuturogi-calendar__table tbody td:first-child {
+    background-color: #fff;
+}
+
+.dark .kuturogi-calendar__table tbody td:first-child {
+    background-color: rgb(17 24 39);
+}
+
+.kuturogi-calendar__cell {
+    text-align: center;
+}
+
+.kuturogi-calendar__cell--zero {
+    color: rgb(220 38 38);
+    font-weight: 600;
+}
+
+.kuturogi-calendar__cell--low {
+    color: rgb(217 119 6);
+    font-weight: 600;
+}
+
+.kuturogi-calendar__link {
+    display: inline-flex;
+    min-width: 2rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.375rem;
+    padding: 0.25rem 0.5rem;
+    transition: background-color 150ms ease, color 150ms ease;
+}
+
+.kuturogi-calendar__link--active {
+    background-color: rgb(var(--primary-50));
+    color: rgb(var(--primary-700));
+}
+
+.kuturogi-calendar__link--active:hover {
+    background-color: rgb(var(--primary-100));
+}
+
+.dark .kuturogi-calendar__link--active {
+    background-color: rgb(var(--primary-400) / 0.1);
+    color: rgb(var(--primary-400));
+}
+
+.dark .kuturogi-calendar__link--active:hover {
+    background-color: rgb(var(--primary-400) / 0.2);
+}
+
+.kuturogi-calendar__link--empty {
+    color: rgb(156 163 175);
+}
+
+.kuturogi-calendar__link--empty:hover {
+    background-color: rgb(249 250 251);
+}
+
+.dark .kuturogi-calendar__link--empty:hover {
+    background-color: rgb(31 41 55);
+}
+
+.kuturogi-calendar__empty {
+    padding: 1.5rem 0.75rem;
+    text-align: center;
+    color: rgb(107 114 128);
+}

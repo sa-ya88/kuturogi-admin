@@ -1,0 +1,24 @@
+{
+	"name": "Kuturogi Admin",
+	"dockerComposeFile": "docker-compose.yml",
+	"service": "app",
+	"workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+
+	"forwardPorts": [8081, 3306],
+
+	"remoteEnv": {
+		"XDEBUG_MODE": "off"
+	},
+
+	"customizations": {
+		"vscode": {
+			"settings": {
+				"npm.autoDetect": "off",
+				"npm.exclude": "**/vendor/**",
+				"task.autoDetect": "off"
+			}
+		}
+	},
+
+	"postCreateCommand": "composer install --no-interaction && (test -f .env || cp .env.example .env) && php artisan key:generate --force && touch database/database.sqlite && php artisan migrate --force",
+}
