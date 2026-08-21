@@ -2,7 +2,9 @@
 
 namespace App\Filament\Resources\PlanResource\Pages;
 
+use App\Filament\Concerns\ScrollsToTop;
 use App\Filament\Resources\PlanResource;
+use App\Filament\Resources\PlanResource\Pages\Concerns\HandlesPlanImages;
 use App\Filament\Resources\PlanResource\Pages\Concerns\NormalizesPlanFormData;
 use App\Services\KuturogiSyncService;
 use Filament\Notifications\Notification;
@@ -10,7 +12,9 @@ use Filament\Resources\Pages\CreateRecord;
 
 class CreatePlan extends CreateRecord
 {
+    use HandlesPlanImages;
     use NormalizesPlanFormData;
+    use ScrollsToTop;
 
     protected static string $resource = PlanResource::class;
 
@@ -21,18 +25,33 @@ class CreatePlan extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        return $this->normalizePlanFormData($data);
+        $data = $this->normalizePlanFormData($data);
+
+        return $this->extractPlanImagesFromFormData($data);
     }
 
     protected function afterCreate(): void
     {
         try {
-            app(KuturogiSyncService::class)->pushPlanToKuturogi($this->record->fresh(['rooms']));
+            $syncService = app(KuturogiSyncService::class);
+            $syncService->pushPlanToKuturogi($this->record->fresh(['rooms']));
 
-            Notification::make()
+            if ($this->pendingPlanImages !== []) {
+                $this->persistPendingPlanImages($this->record->fresh());
+                $syncService->pushPlanToKuturogi($this->record->fresh(['rooms']));
+            }
+
+            $pruned = $syncService->pruneUnlinkedKuturogiPlans();
+
+            $notification = Notification::make()
                 ->title('kuturogi へプランを反映しました')
-                ->success()
-                ->send();
+                ->success();
+
+            if (($pruned['deleted'] ?? 0) > 0 || ($pruned['detached'] ?? 0) > 0) {
+                $notification->body("余剰プランを削除 {$pruned['deleted']} / 紐付け解除 {$pruned['detached']} 件");
+            }
+
+            $notification->send();
         } catch (\Throwable $e) {
             Notification::make()
                 ->title('kuturogi への自動反映に失敗しました')
@@ -40,6 +59,15 @@ class CreatePlan extends CreateRecord
                 ->danger()
                 ->persistent()
                 ->send();
+        }
+    }
+
+    public function create(bool $another = false): void
+    {
+        parent::create($another);
+
+        if ($another) {
+            $this->scrollToTop();
         }
     }
 }

@@ -1,6 +1,8 @@
 <?php
 
 use App\Console\Commands\SyncKuturogiCommand;
+use App\Http\Middleware\AllowFilamentAssetCors;
+use App\Http\Middleware\VerifyKuturogiWebhook;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -14,10 +16,14 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withCommands([
         SyncKuturogiCommand::class,
+        \App\Console\Commands\RefreshDemoDataCommand::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->redirectGuestsTo('/admin/login');
+        $middleware->trustProxies(at: '*');
+        $middleware->append(AllowFilamentAssetCors::class);
         $middleware->alias([
-            'kuturogi.webhook' => \App\Http\Middleware\VerifyKuturogiWebhook::class,
+            'kuturogi.webhook' => VerifyKuturogiWebhook::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

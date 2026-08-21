@@ -15,7 +15,7 @@ class EditRoomFeatureOption extends EditRecord
 
     protected function getSavedNotificationTitle(): ?string
     {
-        return '設備・特徴を更新しました';
+        return 'アピールポイントを更新しました';
     }
 
     protected function getHeaderActions(): array
@@ -26,11 +26,11 @@ class EditRoomFeatureOption extends EditRecord
                     if ($record->isUsedByRooms()) {
                         Notification::make()
                             ->title('削除できません')
-                            ->body('この設備・特徴は客室で使用中です。無効化してください。')
+                            ->body('このアピールポイントは客室で使用中です。無効化してください。')
                             ->danger()
                             ->send();
 
-                        throw new Halt();
+                        throw new Halt;
                     }
                 }),
         ];

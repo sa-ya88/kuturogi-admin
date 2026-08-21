@@ -76,7 +76,7 @@ class KuturogiApiClient
         );
     }
 
-    public function clientForMultipart(): \Illuminate\Http\Client\PendingRequest
+    public function clientForMultipart(): PendingRequest
     {
         $apiKey = config('kuturogi.api_key');
 
@@ -105,6 +105,13 @@ class KuturogiApiClient
         return $this->client()->post(
             config('kuturogi.endpoints.plans'),
             $data
+        );
+    }
+
+    public function deletePlan(int $kuturogiPlanId): Response
+    {
+        return $this->client()->delete(
+            config('kuturogi.endpoints.plans')."/{$kuturogiPlanId}"
         );
     }
 

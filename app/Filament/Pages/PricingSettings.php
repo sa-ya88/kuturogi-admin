@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Models\PricingSeasonRate;
 use App\Services\PricingSettingsService;
+use App\Support\FieldLimits;
 use Filament\Forms;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
@@ -32,7 +33,7 @@ class PricingSettings extends Page implements HasForms
 
     public static function canAccess(): bool
     {
-        return auth()->check();
+        return auth()->user()?->isAdmin() ?? false;
     }
 
     public function mount(PricingSettingsService $service): void
@@ -56,7 +57,7 @@ class PricingSettings extends Page implements HasForms
                             ->numeric()
                             ->integer()
                             ->minValue(0)
-                            ->maxValue(500)
+                            ->maxValue(FieldLimits::PERCENT)
                             ->suffix('%増')
                             ->required(),
                         Forms\Components\TextInput::make('weekend.saturday_percent')
@@ -64,7 +65,7 @@ class PricingSettings extends Page implements HasForms
                             ->numeric()
                             ->integer()
                             ->minValue(0)
-                            ->maxValue(500)
+                            ->maxValue(FieldLimits::PERCENT)
                             ->suffix('%増')
                             ->required(),
                         Forms\Components\TextInput::make('weekend.sunday_percent')
@@ -72,7 +73,7 @@ class PricingSettings extends Page implements HasForms
                             ->numeric()
                             ->integer()
                             ->minValue(0)
-                            ->maxValue(500)
+                            ->maxValue(FieldLimits::PERCENT)
                             ->suffix('%増')
                             ->required(),
                         Forms\Components\TextInput::make('weekend.holiday_percent')
@@ -80,7 +81,7 @@ class PricingSettings extends Page implements HasForms
                             ->numeric()
                             ->integer()
                             ->minValue(0)
-                            ->maxValue(500)
+                            ->maxValue(FieldLimits::PERCENT)
                             ->suffix('%増')
                             ->required()
                             ->helperText('祝日判定の自動化は後続対応。ここでは割増率のみ設定します'),
@@ -89,7 +90,7 @@ class PricingSettings extends Page implements HasForms
                             ->numeric()
                             ->integer()
                             ->minValue(0)
-                            ->maxValue(500)
+                            ->maxValue(FieldLimits::PERCENT)
                             ->suffix('%増')
                             ->required(),
                     ])
@@ -105,7 +106,7 @@ class PricingSettings extends Page implements HasForms
                                 Forms\Components\TextInput::make('name')
                                     ->label('名称')
                                     ->required()
-                                    ->maxLength(255),
+                                    ->maxLength(FieldLimits::TITLE),
                                 Forms\Components\Select::make('kind')
                                     ->label('種別')
                                     ->options(PricingSeasonRate::kindOptions())
@@ -117,6 +118,7 @@ class PricingSettings extends Page implements HasForms
                                     ->numeric()
                                     ->integer()
                                     ->minValue(0)
+                                    ->maxValue(FieldLimits::SORT)
                                     ->default(0)
                                     ->required()
                                     ->helperText('数値が大きいほど優先'),
@@ -142,7 +144,7 @@ class PricingSettings extends Page implements HasForms
                                     ->numeric()
                                     ->integer()
                                     ->minValue(0)
-                                    ->maxValue(500)
+                                    ->maxValue(FieldLimits::PERCENT)
                                     ->suffix('%')
                                     ->required()
                                     ->helperText('割増または割引の％'),
@@ -166,7 +168,7 @@ class PricingSettings extends Page implements HasForms
                         Forms\Components\TextInput::make('child_rate.name')
                             ->label('区分名')
                             ->required()
-                            ->maxLength(255)
+                            ->maxLength(FieldLimits::TITLE)
                             ->default('子供')
                             ->helperText('例: 子供・小学生以下'),
                         Forms\Components\TextInput::make('child_rate.percent_of_adult')
@@ -194,12 +196,13 @@ class PricingSettings extends Page implements HasForms
                                 Forms\Components\TextInput::make('name')
                                     ->label('名称')
                                     ->required()
-                                    ->maxLength(255),
+                                    ->maxLength(FieldLimits::TITLE),
                                 Forms\Components\TextInput::make('price')
                                     ->label('料金')
                                     ->numeric()
                                     ->integer()
                                     ->minValue(0)
+                                    ->maxValue(FieldLimits::PRICE)
                                     ->prefix('¥')
                                     ->required(),
                                 Forms\Components\Toggle::make('is_active')
@@ -208,6 +211,7 @@ class PricingSettings extends Page implements HasForms
                                 Forms\Components\Textarea::make('description')
                                     ->label('説明')
                                     ->rows(2)
+                                    ->maxLength(FieldLimits::DESCRIPTION)
                                     ->columnSpanFull(),
                             ])
                             ->columns(3)
@@ -229,13 +233,14 @@ class PricingSettings extends Page implements HasForms
                                 Forms\Components\TextInput::make('label')
                                     ->label('表示名')
                                     ->required()
-                                    ->maxLength(255)
+                                    ->maxLength(FieldLimits::TITLE)
                                     ->helperText('例: 3日前〜前日、当日（連絡あり）、無断不泊'),
                                 Forms\Components\TextInput::make('days_before_from')
                                     ->label('何日前から')
                                     ->numeric()
                                     ->integer()
                                     ->minValue(0)
+                                    ->maxValue(FieldLimits::DAYS)
                                     ->required()
                                     ->helperText('大きい日数側（例: 3）。無断不泊は 0'),
                                 Forms\Components\TextInput::make('days_before_to')
@@ -243,6 +248,7 @@ class PricingSettings extends Page implements HasForms
                                     ->numeric()
                                     ->integer()
                                     ->minValue(0)
+                                    ->maxValue(FieldLimits::DAYS)
                                     ->required()
                                     ->helperText('小さい日数側（例: 1=前日、0=当日）'),
                                 Forms\Components\TextInput::make('charge_percent')

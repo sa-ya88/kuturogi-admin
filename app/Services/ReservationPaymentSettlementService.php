@@ -96,6 +96,10 @@ class ReservationPaymentSettlementService
 
     public function pushPaymentToKuturogi(Reservation $reservation): void
     {
+        if (config('kuturogi.shared_database')) {
+            return;
+        }
+
         if (! $reservation->kuturogi_reservation_id) {
             return;
         }

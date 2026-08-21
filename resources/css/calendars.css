@@ -65,8 +65,28 @@
     background-color: rgb(17 24 39);
 }
 
-.kuturogi-calendar__cell {
-    text-align: center;
+.kuturogi-calendar__cell--tip {
+    cursor: pointer;
+}
+
+.kuturogi-calendar__tooltip {
+    position: fixed;
+    z-index: 80;
+    max-width: 16rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+    background-color: rgb(17 24 39);
+    color: #fff;
+    font-size: 0.75rem;
+    line-height: 1.25rem;
+    white-space: normal;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+    pointer-events: none;
+    transform: translateX(-50%);
+}
+
+.kuturogi-calendar__tooltip[hidden] {
+    display: none;
 }
 
 .kuturogi-calendar__cell--zero {

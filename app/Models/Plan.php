@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\KuturogiSyncService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -61,6 +62,47 @@ class Plan extends Model
     public function reservations(): HasMany
     {
         return $this->hasMany(Reservation::class);
+    }
+
+    public function hasBlockingReservations(): bool
+    {
+        return $this->reservations()->exists();
+    }
+
+    public function deletionBlockedMessage(): string
+    {
+        $total = $this->reservations()->count();
+        $upcoming = $this->reservations()
+            ->where('status', '!=', Reservation::STATUS_CANCELLED)
+            ->whereDate('checkout_date', '>=', now()->toDateString())
+            ->count();
+        $cancelled = $this->reservations()
+            ->where('status', Reservation::STATUS_CANCELLED)
+            ->count();
+
+        $details = ["全{$total}件"];
+
+        if ($upcoming > 0) {
+            $details[] = "今後の有効な予約{$upcoming}件";
+        }
+
+        if ($cancelled > 0) {
+            $details[] = "キャンセル済み{$cancelled}件";
+        }
+
+        return 'このプランは予約履歴があるため削除できません（'.implode('、', $details).'）。'
+            .'過去の予約も含めデータを残す必要があるため、削除ではなく「公開」をOFFにするとサイトから非表示にできます。';
+    }
+
+    protected static function booted(): void
+    {
+        static::deleting(function (Plan $plan): void {
+            if (! $plan->kuturogi_plan_id || empty(config('kuturogi.api_key')) || app()->runningUnitTests()) {
+                return;
+            }
+
+            app(KuturogiSyncService::class)->deletePlanOnKuturogi($plan);
+        });
     }
 
     public function earlyBirdDiscountTypeLabel(): ?string

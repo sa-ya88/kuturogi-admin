@@ -2,7 +2,9 @@
 
 namespace App\Filament\Resources\RoomResource\RelationManagers;
 
+use App\Filament\Concerns\ScrollsToTop;
 use App\Models\RoomUnit;
+use App\Support\FieldLimits;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -12,6 +14,8 @@ use Illuminate\Database\Eloquent\Builder;
 
 class UnitsRelationManager extends RelationManager
 {
+    use ScrollsToTop;
+
     protected static string $relationship = 'units';
 
     protected static ?string $title = '客室管理';
@@ -24,14 +28,7 @@ class UnitsRelationManager extends RelationManager
             Forms\Components\TextInput::make('code')
                 ->label('部屋番号')
                 ->required()
-                ->maxLength(50),
-            Forms\Components\TextInput::make('sort_order')
-                ->label('表示順')
-                ->numeric()
-                ->integer()
-                ->required()
-                ->minValue(1)
-                ->default(fn () => (int) RoomUnit::max('sort_order') + 1),
+                ->maxLength(FieldLimits::ROOM_CODE),
             Forms\Components\Select::make('operation_status')
                 ->label('運用状態')
                 ->options(RoomUnit::operationStatusOptions())
@@ -66,6 +63,7 @@ class UnitsRelationManager extends RelationManager
             Forms\Components\Textarea::make('notes')
                 ->label('備考')
                 ->rows(3)
+                ->maxLength(FieldLimits::NOTES)
                 ->columnSpanFull(),
         ])->columns(2);
     }
@@ -82,7 +80,9 @@ class UnitsRelationManager extends RelationManager
                 ]);
             })
             ->columns([
-                Tables\Columns\TextColumn::make('code')->label('部屋番号'),
+                Tables\Columns\TextColumn::make('code')
+                    ->label('部屋番号')
+                    ->sortable(query: fn (Builder $query, string $direction): Builder => $query->orderByRoomNumber($direction)),
                 Tables\Columns\TextColumn::make('operation_status')
                     ->label('運用状態')
                     ->badge()
@@ -97,12 +97,14 @@ class UnitsRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('notes')->label('備考')->limit(24)->placeholder('—'),
             ])
             ->headerActions([
-                Tables\Actions\CreateAction::make()->label('個別客室を追加'),
+                Tables\Actions\CreateAction::make()
+                    ->label('個別客室を追加')
+                    ->after(fn () => $this->scrollToTop()),
             ])
             ->actions([
                 Tables\Actions\EditAction::make()->label('編集'),
                 Tables\Actions\DeleteAction::make(),
             ])
-            ->defaultSort('sort_order');
+            ->defaultSort(fn (Builder $query, string $direction): Builder => $query->orderByRoomNumber($direction));
     }
 }

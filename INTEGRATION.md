@@ -1,6 +1,6 @@
 # kuturogi ↔ kuturogi-admin 連携 API 設計
 
-Phase 1 で定義する双方向リアルタイム連携の仕様。
+現行のポートフォリオ構成は **2アプリ・1データベース**（`SHARED_DATABASE=true`）です。Webhook / Integration API による二重書き込みは使いません。以下は別 DB で動かしていた時期の仕様です。
 
 ## 認証
 

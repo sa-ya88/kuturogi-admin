@@ -56,6 +56,12 @@ class RoomUnit extends Model
 
     protected static function booted(): void
     {
+        static::creating(function (RoomUnit $unit): void {
+            if ($unit->sort_order === null) {
+                $unit->sort_order = ((int) static::query()->max('sort_order')) + 1;
+            }
+        });
+
         static::saved(function (RoomUnit $unit): void {
             if ($unit->wasRecentlyCreated
                 || $unit->wasChanged(['operation_status', 'room_id'])) {
@@ -66,6 +72,18 @@ class RoomUnit extends Model
         static::deleted(function (RoomUnit $unit): void {
             static::syncParentStock($unit);
         });
+    }
+
+    public function scopeOrderByRoomNumber(Builder $query, string $direction = 'asc'): Builder
+    {
+        $direction = $direction === 'desc' ? 'desc' : 'asc';
+        $cast = $query->getConnection()->getDriverName() === 'sqlite'
+            ? 'INTEGER'
+            : 'UNSIGNED';
+
+        return $query
+            ->orderByRaw("CAST(code AS {$cast}) {$direction}")
+            ->orderBy('code', $direction);
     }
 
     protected static function syncParentStock(RoomUnit $unit): void

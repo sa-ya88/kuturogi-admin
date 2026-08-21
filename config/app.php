@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'Laravel'),
+    'name' => env('APP_NAME', 'KUTUROGI管理システム'),
 
     /*
     |--------------------------------------------------------------------------
@@ -53,6 +53,22 @@ return [
     */
 
     'url' => env('APP_URL', 'http://localhost'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Demo / portfolio mode
+    |--------------------------------------------------------------------------
+    |
+    | 公開ポートフォリオ向け。ログイン案内とダミー入力の注意書きを出す。
+    | 本番の旅館運用では false にする。
+    |
+    */
+
+    'demo_mode' => filter_var(env('DEMO_MODE', false), FILTER_VALIDATE_BOOLEAN),
+
+    'demo_login_password' => env('DEMO_LOGIN_PASSWORD', 'demo'),
+
+    'demo_refresh_hours' => (int) env('DEMO_REFRESH_HOURS', 4),
 
     /*
     |--------------------------------------------------------------------------

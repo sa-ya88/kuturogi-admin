@@ -146,6 +146,8 @@ class ReservationStayService
             ->where('reservation_id', $reservation->id)
             ->delete();
 
+        $this->refreshInventoryForReservation($reservation);
+
         $reservation->stays()
             ->whereNotNull('room_unit_id')
             ->whereNull('checked_out_at')
@@ -255,6 +257,8 @@ class ReservationStayService
             ->when($unitId, fn ($query) => $query->where('room_unit_id', $unitId))
             ->delete();
 
+        $this->refreshInventoryForReservation($reservation);
+
         if ($unitId) {
             RoomUnit::query()
                 ->where('id', $unitId)
@@ -290,6 +294,12 @@ class ReservationStayService
             ->where('reservation_id', $stay->reservation_id)
             ->where('room_unit_id', $stay->room_unit_id)
             ->delete();
+
+        $reservation = $stay->reservation ?? $stay->reservation()->first();
+
+        if ($reservation) {
+            $this->refreshInventoryForReservation($reservation);
+        }
     }
 
     protected function writeOccupanciesForStay(ReservationStay $stay, int $roomUnitId): void
@@ -325,6 +335,23 @@ class ReservationStayService
                 'date' => $date,
                 'reservation_id' => $reservation->id,
             ]);
+        }
+
+        $this->refreshInventoryForReservation($reservation);
+    }
+
+    protected function refreshInventoryForReservation(Reservation $reservation): void
+    {
+        $room = $reservation->room ?? $reservation->room()->first();
+
+        if (! $room) {
+            return;
+        }
+
+        $service = app(RoomInventoryService::class);
+
+        foreach ($this->stayNightDates($reservation) as $date) {
+            $service->upsertRemainsForDate($room, $date);
         }
     }
 

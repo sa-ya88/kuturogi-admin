@@ -9,16 +9,19 @@ use App\Models\Room;
 use App\Models\RoomFeatureOption;
 use App\Services\KuturogiSyncService;
 use App\Services\RoomSortOrderService;
+use App\Support\FieldLimits;
+use App\Support\RoomDetails;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Infolists;
 use Filament\Infolists\Infolist;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Support\Exceptions\Halt;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Support\Exceptions\Halt;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Storage;
 
 class RoomResource extends Resource
 {
@@ -48,18 +51,21 @@ class RoomResource extends Resource
                         ->integer()
                         ->required()
                         ->minValue(1)
+                        ->maxValue(FieldLimits::SORT)
                         ->step(1)
                         ->default(fn () => (int) Room::max('sort_order') + 1)
                         ->helperText('数値が小さいほど先頭に表示されます（整数のみ）'),
                     Forms\Components\TextInput::make('name')
                         ->label('客室名')
                         ->required()
-                        ->maxLength(255),
+                        ->maxLength(FieldLimits::TITLE),
                     Forms\Components\TextInput::make('price_per_person')
                         ->label('1人あたり料金（円）')
                         ->numeric()
+                        ->integer()
                         ->required()
-                        ->minValue(0),
+                        ->minValue(0)
+                        ->maxValue(FieldLimits::PRICE),
                     Forms\Components\Placeholder::make('stock_count_display')
                         ->label('在庫数')
                         ->content(function (?Room $record): string {
@@ -91,20 +97,50 @@ class RoomResource extends Resource
                         ->helperText('OFF にすると kuturogi の一覧から非表示になります'),
                     Forms\Components\Textarea::make('description')
                         ->label('説明')
+                        ->required()
                         ->rows(4)
+                        ->maxLength(FieldLimits::DESCRIPTION)
+                        ->columnSpanFull(),
+                ])->columns(2),
+
+            Forms\Components\Section::make('お部屋詳細')
+                ->description('kuturogi の客室詳細ページ「お部屋詳細」に表示されます。未設定の項目はサイトに出ません。客室設備・アメニティの選択肢は「設定 → 設備・アメニティ」で管理できます。')
+                ->schema([
+                    Forms\Components\CheckboxList::make('details.facilities')
+                        ->label('客室設備')
+                        ->options(fn (?Room $record): array => RoomDetails::facilityOptions($record?->details['facilities'] ?? []))
+                        ->columns(3)
+                        ->bulkToggleable()
+                        ->columnSpanFull(),
+                    Forms\Components\TextInput::make('details.internet')
+                        ->label('インターネット')
+                        ->maxLength(FieldLimits::INTERNET)
+                        ->placeholder('全室Wi-Fi無料'),
+                    Forms\Components\Select::make('details.smoking')
+                        ->label('禁煙・喫煙')
+                        ->options(RoomDetails::smokingOptions())
+                        ->searchable()
+                        ->native(false)
+                        ->nullable()
+                        ->placeholder('未設定'),
+                    Forms\Components\CheckboxList::make('details.amenities')
+                        ->label('アメニティ')
+                        ->options(fn (?Room $record): array => RoomDetails::amenityOptions($record?->details['amenities'] ?? []))
+                        ->columns(3)
+                        ->bulkToggleable()
                         ->columnSpanFull(),
                 ])->columns(2),
 
             Forms\Components\Section::make('詳細')
-                ->description('保存すると在庫カレンダー・在庫管理の予約可能期間へ反映されます。在庫数は稼働中の個別客室数です。')
+                ->description('保存すると在庫カレンダーの予約可能期間へ反映されます。在庫数は稼働中の個別客室数です。')
                 ->schema([
                     Forms\Components\Select::make('features')
-                        ->label('設備・特徴')
+                        ->label('アピールポイント')
                         ->multiple()
                         ->options(fn (?Room $record): array => RoomFeatureOption::optionsForSelect($record))
                         ->searchable()
                         ->preload()
-                        ->helperText('選択肢は「設定 → 設備・特徴」で管理できます')
+                        ->helperText('選択肢は「設定 → アピールポイント」で管理できます。お部屋一覧のタグに表示されます')
                         ->rules([
                             'array',
                             function (): \Closure {
@@ -120,7 +156,7 @@ class RoomResource extends Resource
 
                                     foreach ($value as $feature) {
                                         if (! in_array($feature, $allowed, true)) {
-                                            $fail('無効な設備・特徴が選択されています。設定画面で有効化するか、選択を見直してください。');
+                                            $fail('無効なアピールポイントが選択されています。設定画面で有効化するか、選択を見直してください。');
                                         }
                                     }
                                 };
@@ -130,7 +166,6 @@ class RoomResource extends Resource
                         ->label('客室画像')
                         ->helperText('webp / png / jpeg（jpg）のみ。最大5枚。')
                         ->disk('kuturogi_images')
-                        ->directory('.')
                         ->visibility('public')
                         ->image()
                         ->multiple()
@@ -142,6 +177,21 @@ class RoomResource extends Resource
                             'image/jpeg',
                         ])
                         ->storeFiles(false)
+                        ->getUploadedFileUsing(function (Forms\Components\FileUpload $component, string $file): ?array {
+                            $basename = basename(str_replace('/images/', '', $file));
+                            $disk = Storage::disk('kuturogi_images');
+
+                            if ($basename === '' || ! $disk->exists($basename)) {
+                                return null;
+                            }
+
+                            return [
+                                'name' => $basename,
+                                'size' => $disk->size($basename),
+                                'type' => $disk->mimeType($basename) ?: 'image/jpeg',
+                                'url' => route('filament.admin.room-images.preview', ['filename' => $basename]),
+                            ];
+                        })
                         ->columnSpanFull(),
                     Forms\Components\CheckboxList::make('plans')
                         ->label('紐付けプラン')
@@ -166,8 +216,8 @@ class RoomResource extends Resource
                     ->type('number')
                     ->inputMode('numeric')
                     ->step(1)
-                    ->rules(['required', 'integer', 'min:1'])
-                    ->extraInputAttributes(['min' => '1', 'step' => '1'])
+                    ->rules(['required', 'integer', 'min:1', 'max:'.FieldLimits::SORT])
+                    ->extraInputAttributes(['min' => '1', 'max' => (string) FieldLimits::SORT, 'step' => '1'])
                     ->visible($isAdmin)
                     ->updateStateUsing(function (Room $record, $state): int {
                         $sortOrderService = app(RoomSortOrderService::class);
@@ -227,6 +277,7 @@ class RoomResource extends Resource
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make()
                     ->successNotificationTitle('客室を削除し、kuturogi からも削除しました')
+                    ->modalDescription('予約履歴（過去・キャンセル済みを含む）がある客室タイプは削除できません。サイトから外す場合は「公開」をOFFにしてください。')
                     ->action(function (Room $record) {
                         try {
                             app(KuturogiSyncService::class)->deleteRoomWithSync($record);
@@ -237,13 +288,14 @@ class RoomResource extends Resource
                                 ->danger()
                                 ->send();
 
-                            throw new Halt();
+                            throw new Halt;
                         }
                     }),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make()
+                        ->modalDescription('予約履歴（過去・キャンセル済みを含む）がある客室タイプは削除できません。サイトから外す場合は「公開」をOFFにしてください。')
                         ->action(function (Collection $records) {
                             $syncService = app(KuturogiSyncService::class);
 
@@ -257,7 +309,7 @@ class RoomResource extends Resource
                                         ->danger()
                                         ->send();
 
-                                    throw new Halt();
+                                    throw new Halt;
                                 }
                             }
 
@@ -294,9 +346,27 @@ class RoomResource extends Resource
                     ->label('説明')
                     ->columnSpanFull(),
             ])->columns(2),
+            Infolists\Components\Section::make('お部屋詳細')->schema([
+                Infolists\Components\TextEntry::make('details.facilities')
+                    ->label('客室設備')
+                    ->formatStateUsing(fn (mixed $state): string => is_array($state) ? implode('、', $state) : (string) $state)
+                    ->placeholder('—')
+                    ->columnSpanFull(),
+                Infolists\Components\TextEntry::make('details.internet')
+                    ->label('インターネット')
+                    ->placeholder('—'),
+                Infolists\Components\TextEntry::make('details.smoking')
+                    ->label('禁煙・喫煙')
+                    ->placeholder('—'),
+                Infolists\Components\TextEntry::make('details.amenities')
+                    ->label('アメニティ')
+                    ->formatStateUsing(fn (mixed $state): string => is_array($state) ? implode('、', $state) : (string) $state)
+                    ->placeholder('—')
+                    ->columnSpanFull(),
+            ])->columns(2),
             Infolists\Components\Section::make('詳細')->schema([
                 Infolists\Components\TextEntry::make('features')
-                    ->label('設備・特徴')
+                    ->label('アピールポイント')
                     ->badge()
                     ->columnSpanFull(),
                 Infolists\Components\ImageEntry::make('images')
@@ -322,8 +392,8 @@ class RoomResource extends Resource
     {
         return [
             'index' => Pages\ListRooms::route('/'),
-            'view' => Pages\ViewRoom::route('/{record}'),
             'create' => Pages\CreateRoom::route('/create'),
+            'view' => Pages\ViewRoom::route('/{record}'),
             'edit' => Pages\EditRoom::route('/{record}/edit'),
         ];
     }

@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\Room;
 use App\Models\RoomInventory;
+use App\Models\RoomUnit;
+use App\Models\RoomUnitDateOccupancy;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use RuntimeException;
@@ -11,7 +13,7 @@ use RuntimeException;
 class RoomInventoryService
 {
     /**
-     * 客室の在庫数・予約可能期間を、在庫カレンダー・在庫管理へ反映する。
+     * 客室の在庫数・予約可能期間を、在庫カレンダーへ反映する。
      */
     public function syncInventoriesForRoom(Room $room, ?RoomAvailabilitySnapshot $previous = null): int
     {
@@ -25,27 +27,14 @@ class RoomInventoryService
             throw new RuntimeException('終了日は開始日以降の日付を指定してください。');
         }
 
-        $isInitial = $previous === null;
-        $oldStock = $previous?->stockCount ?? $current->stockCount;
-
         /** @var Collection<int, RoomInventory> $inventoriesToSync */
         $inventoriesToSync = collect();
 
         $this->clearInventoriesOutsideRange($room, $current, $inventoriesToSync);
 
         for ($date = $current->availableFrom->copy(); $date->lte($current->availableTo); $date->addDay()) {
-            $dateString = $date->toDateString();
-            $remains = $this->resolveRemains(
-                $room,
-                $dateString,
-                $current->stockCount,
-                $oldStock,
-                $isInitial,
-                $previous,
-            );
-
             $inventoriesToSync->push(
-                RoomInventory::upsertForRoomDate($room->id, $dateString, $remains)
+                $this->upsertRemainsForDate($room, $date->toDateString(), $current->stockCount)
             );
         }
 
@@ -54,6 +43,56 @@ class RoomInventoryService
         }
 
         return $inventoriesToSync->count();
+    }
+
+    /**
+     * 予約の占有状況から残室数を再計算し、在庫カレンダーへ反映する。
+     *
+     * @param  list<Room>  $rooms
+     */
+    public function refreshRemainsFromOccupancy(array $rooms, Carbon $from, Carbon $to): void
+    {
+        foreach ($rooms as $room) {
+            $stock = $room->inServiceUnitsCount();
+
+            RoomInventory::query()
+                ->where('room_id', $room->id)
+                ->where(function ($query) use ($from, $to): void {
+                    $query->whereDate('date', '<', $from->toDateString())
+                        ->orWhereDate('date', '>', $to->toDateString());
+                })
+                ->delete();
+
+            for ($date = $from->copy(); $date->lte($to); $date->addDay()) {
+                $this->upsertRemainsForDate($room, $date->toDateString(), $stock);
+            }
+        }
+    }
+
+    public function upsertRemainsForDate(Room $room, string $date, ?int $stock = null): RoomInventory
+    {
+        return RoomInventory::upsertForRoomDate(
+            $room->id,
+            $date,
+            $this->remainsFromOccupancy($room, $date, $stock)
+        );
+    }
+
+    public function remainsFromOccupancy(Room $room, string $date, ?int $stock = null): int
+    {
+        $stock ??= $room->inServiceUnitsCount();
+
+        $occupied = RoomUnitDateOccupancy::query()
+            ->whereDate('date', $date)
+            ->whereHas(
+                'roomUnit',
+                fn ($query) => $query
+                    ->where('room_id', $room->id)
+                    ->where('operation_status', RoomUnit::OPERATION_IN_SERVICE)
+            )
+            ->count();
+
+        return max(0, $stock - $occupied);
     }
 
     /**
@@ -70,47 +109,6 @@ class RoomInventoryService
             );
 
         return $this->syncInventoriesForRoom($room, $previous);
-    }
-
-    private function resolveRemains(
-        Room $room,
-        string $dateString,
-        int $newStock,
-        int $oldStock,
-        bool $isInitial,
-        ?RoomAvailabilitySnapshot $previous,
-    ): int {
-        if ($isInitial) {
-            return $newStock;
-        }
-
-        $date = Carbon::parse($dateString)->startOfDay();
-        $wasInPreviousRange = $previous !== null
-            && $date->betweenIncluded($previous->availableFrom, $previous->availableTo);
-
-        if (! $wasInPreviousRange) {
-            return $newStock;
-        }
-
-        if ($previous->stockCount !== $newStock) {
-            $existing = RoomInventory::query()
-                ->where('room_id', $room->id)
-                ->whereDate('date', $dateString)
-                ->first();
-
-            if ($existing) {
-                return max(0, $newStock - ($oldStock - $existing->remains));
-            }
-
-            return $newStock;
-        }
-
-        $existing = RoomInventory::query()
-            ->where('room_id', $room->id)
-            ->whereDate('date', $dateString)
-            ->first();
-
-        return $existing?->remains ?? $newStock;
     }
 
     /**

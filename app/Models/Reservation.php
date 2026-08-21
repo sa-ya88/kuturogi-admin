@@ -31,6 +31,7 @@ class Reservation extends Model
     protected $fillable = [
         'kuturogi_reservation_id',
         'customer_id',
+        'user_id',
         'room_id',
         'plan_id',
         'checkin_date',
@@ -56,6 +57,9 @@ class Reservation extends Model
         'guest_name_kana',
         'guest_tel',
         'guest_email',
+        'guest_zip_code',
+        'guest_address',
+        'guest_building',
         'source',
         'synced_at',
         'selected_choices',
@@ -82,6 +86,11 @@ class Reservation extends Model
         return $this->belongsTo(Customer::class);
     }
 
+    public function siteUser(): BelongsTo
+    {
+        return $this->belongsTo(SiteUser::class, 'user_id');
+    }
+
     public function room(): BelongsTo
     {
         return $this->belongsTo(Room::class);
@@ -95,6 +104,14 @@ class Reservation extends Model
     public function salesRecord(): HasOne
     {
         return $this->hasOne(SalesRecord::class);
+    }
+
+    /**
+     * ゲストサイトの予約確認と同じ番号（reservations.id）。
+     */
+    public function numberForDisplay(): string
+    {
+        return '#'.$this->id;
     }
 
     public function stays(): HasMany

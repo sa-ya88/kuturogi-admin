@@ -6,6 +6,7 @@ use App\Filament\Concerns\AuthorizesStaffReadOnlyMutations;
 use App\Filament\Resources\RoomUnitResource\Pages;
 use App\Models\Room;
 use App\Models\RoomUnit;
+use App\Support\FieldLimits;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
@@ -16,6 +17,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Unique;
 
 class RoomUnitResource extends Resource
 {
@@ -47,20 +49,13 @@ class RoomUnitResource extends Resource
             Forms\Components\TextInput::make('code')
                 ->label('部屋番号')
                 ->required()
-                ->maxLength(50)
+                ->maxLength(FieldLimits::ROOM_CODE)
                 ->helperText('例: 201')
                 ->rules([
-                    fn (Get $get, ?RoomUnit $record): \Illuminate\Validation\Rules\Unique => Rule::unique('room_units', 'code')
+                    fn (Get $get, ?RoomUnit $record): Unique => Rule::unique('room_units', 'code')
                         ->where('room_id', $get('room_id'))
                         ->ignore($record),
                 ]),
-            Forms\Components\TextInput::make('sort_order')
-                ->label('表示順')
-                ->numeric()
-                ->integer()
-                ->required()
-                ->minValue(1)
-                ->default(fn () => (int) RoomUnit::max('sort_order') + 1),
             Forms\Components\Select::make('operation_status')
                 ->label('運用状態')
                 ->options(RoomUnit::operationStatusOptions())
@@ -95,6 +90,7 @@ class RoomUnitResource extends Resource
             Forms\Components\Textarea::make('notes')
                 ->label('備考')
                 ->rows(4)
+                ->maxLength(FieldLimits::NOTES)
                 ->columnSpanFull()
                 ->helperText('少し狭い、訳あり など'),
         ])->columns(2);
@@ -103,14 +99,18 @@ class RoomUnitResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->heading(function (mixed $livewire): string {
+                if (! method_exists($livewire, 'getAllTableRecordsCount')) {
+                    return '客室一覧';
+                }
+
+                return '客室一覧（'.$livewire->getAllTableRecordsCount().'件）';
+            })
             ->columns([
-                Tables\Columns\TextColumn::make('sort_order')
-                    ->label('順')
-                    ->sortable(),
                 Tables\Columns\TextColumn::make('code')
                     ->label('部屋番号')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable(query: fn (Builder $query, string $direction): Builder => $query->orderByRoomNumber($direction)),
                 Tables\Columns\TextColumn::make('room.name')
                     ->label('客室タイプ')
                     ->sortable()
@@ -180,7 +180,7 @@ class RoomUnitResource extends Resource
             ->actions([
                 Tables\Actions\EditAction::make()->label('個別設定'),
             ])
-            ->defaultSort('sort_order');
+            ->defaultSort(fn (Builder $query, string $direction): Builder => $query->orderByRoomNumber($direction));
     }
 
     /**

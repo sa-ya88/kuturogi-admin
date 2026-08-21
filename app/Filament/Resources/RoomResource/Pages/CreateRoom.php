@@ -2,16 +2,19 @@
 
 namespace App\Filament\Resources\RoomResource\Pages;
 
+use App\Filament\Concerns\ScrollsToTop;
 use App\Filament\Resources\RoomResource;
 use App\Filament\Resources\RoomResource\Pages\Concerns\HandlesRoomImages;
 use App\Services\KuturogiSyncService;
 use App\Services\RoomInventoryService;
+use App\Support\RoomDetails;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 
 class CreateRoom extends CreateRecord
 {
     use HandlesRoomImages;
+    use ScrollsToTop;
 
     protected static string $resource = RoomResource::class;
 
@@ -23,6 +26,7 @@ class CreateRoom extends CreateRecord
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $data = $this->extractRoomImagesFromFormData($data);
+        $data['details'] = RoomDetails::normalize($data['details'] ?? []);
         $data['stock_count'] = 0;
 
         return $data;
@@ -43,9 +47,21 @@ class CreateRoom extends CreateRecord
 
             $inventoryCount = app(RoomInventoryService::class)->syncInventoriesForRoom($this->record->fresh());
 
+            try {
+                $pruned = $syncService->pruneUnlinkedKuturogiRooms();
+            } catch (\Throwable) {
+                $pruned = ['deleted' => 0, 'unpublished' => 0];
+            }
+
+            $body = $inventoryCount > 0 ? "在庫 {$inventoryCount} 日分を登録しました" : null;
+
+            if (($pruned['deleted'] ?? 0) > 0 || ($pruned['unpublished'] ?? 0) > 0) {
+                $body = trim(($body ? $body.'。' : '')."kuturogi の未連携客室を削除 {$pruned['deleted']} / 非公開 {$pruned['unpublished']} 件");
+            }
+
             Notification::make()
                 ->title('kuturogi のお部屋一覧へ反映しました')
-                ->body($inventoryCount > 0 ? "在庫 {$inventoryCount} 日分を登録しました" : null)
+                ->body($body)
                 ->success()
                 ->send();
         } catch (\Throwable $e) {
@@ -55,6 +71,15 @@ class CreateRoom extends CreateRecord
                 ->danger()
                 ->persistent()
                 ->send();
+        }
+    }
+
+    public function create(bool $another = false): void
+    {
+        parent::create($another);
+
+        if ($another) {
+            $this->scrollToTop();
         }
     }
 }

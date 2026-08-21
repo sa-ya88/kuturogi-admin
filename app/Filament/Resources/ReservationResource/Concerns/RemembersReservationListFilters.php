@@ -13,11 +13,11 @@ trait RemembersReservationListFilters
      */
     public static function defaultListDateRange(): array
     {
-        $monthStart = now()->startOfMonth();
+        $from = now()->subDay()->startOfDay();
 
         return [
-            'from' => $monthStart->format('Y-m-d'),
-            'to' => $monthStart->copy()->addDays(30)->format('Y-m-d'),
+            'from' => $from->format('Y-m-d'),
+            'to' => $from->copy()->addDays(7)->format('Y-m-d'),
         ];
     }
 

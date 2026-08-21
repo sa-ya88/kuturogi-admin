@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Concerns\AuthorizesAdminOnly;
 use App\Filament\Resources\UserResource\Pages;
 use App\Models\User;
+use App\Support\FieldLimits;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -37,7 +38,7 @@ class UserResource extends Resource
                 Forms\Components\TextInput::make('name')
                     ->label('氏名')
                     ->required()
-                    ->maxLength(255),
+                    ->maxLength(FieldLimits::PERSON_NAME),
                 Forms\Components\TextInput::make('login_id')
                     ->label('ログインID')
                     ->required()
@@ -51,7 +52,7 @@ class UserResource extends Resource
                     ->label('メールアドレス')
                     ->email()
                     ->required()
-                    ->maxLength(255)
+                    ->maxLength(FieldLimits::EMAIL)
                     ->unique(ignoreRecord: true),
                 Forms\Components\TextInput::make('password')
                     ->label('パスワード')
@@ -59,7 +60,7 @@ class UserResource extends Resource
                     ->revealable()
                     ->dehydrated(fn (?string $state): bool => filled($state))
                     ->required(fn (string $operation): bool => $operation === 'create')
-                    ->maxLength(255)
+                    ->maxLength(FieldLimits::PASSWORD)
                     ->helperText(fn (string $operation): ?string => $operation === 'edit'
                         ? '変更する場合のみ入力してください'
                         : null),
@@ -117,6 +118,10 @@ class UserResource extends Resource
 
     public static function canDelete(Model $record): bool
     {
+        if (! \App\Support\DemoMode::allowsDeletes()) {
+            return false;
+        }
+
         if (! auth()->user()?->isAdmin()) {
             return false;
         }
@@ -129,11 +134,21 @@ class UserResource extends Resource
             return false;
         }
 
+        if ($record->isDemoGuest()) {
+            return false;
+        }
+
         if ($record->isAdmin() && User::query()->where('role', User::ROLE_ADMIN)->count() <= 1) {
             return false;
         }
 
         return true;
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return \App\Support\DemoMode::allowsDeletes()
+            && (auth()->user()?->isAdmin() ?? false);
     }
 
     public static function getPages(): array

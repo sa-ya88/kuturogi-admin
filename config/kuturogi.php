@@ -12,6 +12,8 @@ return [
     |
     */
 
+    'shared_database' => (bool) env('SHARED_DATABASE', false),
+
     'base_url' => env('KUTUROGI_BASE_URL', 'http://localhost:8080'),
 
     'api_key' => env('KUTUROGI_API_KEY'),

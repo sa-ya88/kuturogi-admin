@@ -4,6 +4,8 @@ namespace App\Filament\Pages;
 
 use App\Models\Room;
 use App\Models\RoomInventory;
+use App\Models\RoomUnit;
+use App\Models\RoomUnitDateOccupancy;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -29,7 +31,7 @@ class InventoryCalendar extends Page implements HasForms
 
     protected static ?string $title = '在庫カレンダー';
 
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 3;
 
     protected static string $view = 'filament.pages.inventory-calendar';
 
@@ -147,20 +149,38 @@ class InventoryCalendar extends Page implements HasForms
             $rangeEnd = Carbon::parse($to)->format('Y-m-d');
         }
 
-        $rooms = Room::query()->where('is_active', true)->orderBy('name')->get();
+        $rooms = Room::query()
+            ->where('is_active', true)
+            ->with(['units' => fn ($query) => $query->orderByRoomNumber()])
+            ->orderBy('name')
+            ->get();
 
         $inventories = RoomInventory::query()
-            ->whereBetween('date', [$rangeStart, $rangeEnd])
+            ->whereDate('date', '>=', $rangeStart)
+            ->whereDate('date', '<=', $rangeEnd)
             ->get()
             ->groupBy(fn (RoomInventory $item) => $item->room_id.'_'.$item->date->format('Y-m-d'));
+
+        $occupiedUnitIdsByDate = $this->occupiedUnitIdsByDate($rangeStart, $rangeEnd);
 
         $rows = [];
 
         foreach ($rooms as $room) {
+            $inServiceUnits = $room->units
+                ->filter(fn (RoomUnit $unit): bool => $unit->operation_status === RoomUnit::OPERATION_IN_SERVICE)
+                ->values();
+
             $cells = [];
 
             foreach ($columns as $column) {
-                $cells[$column] = $this->cellValue($inventories, $room->id, $periodMode, $column);
+                $cells[$column] = $this->cellData(
+                    $inventories,
+                    $inServiceUnits,
+                    $occupiedUnitIdsByDate,
+                    $room->id,
+                    $periodMode,
+                    $column,
+                );
             }
 
             $rows[] = [
@@ -225,6 +245,105 @@ class InventoryCalendar extends Page implements HasForms
         }
 
         return $months;
+    }
+
+    /**
+     * @return array<string, array<int, true>>
+     */
+    protected function occupiedUnitIdsByDate(string $rangeStart, string $rangeEnd): array
+    {
+        $map = [];
+
+        $rows = RoomUnitDateOccupancy::query()
+            ->whereDate('date', '>=', $rangeStart)
+            ->whereDate('date', '<=', $rangeEnd)
+            ->get(['room_unit_id', 'date']);
+
+        foreach ($rows as $row) {
+            $map[$row->date->toDateString()][$row->room_unit_id] = true;
+        }
+
+        return $map;
+    }
+
+    /**
+     * @param  Collection<string, Collection<int, RoomInventory>>  $inventories
+     * @param  Collection<int, RoomUnit>  $inServiceUnits
+     * @param  array<string, array<int, true>>  $occupiedUnitIdsByDate
+     * @return array{value: int|string, tip: ?string}
+     */
+    protected function cellData(
+        Collection $inventories,
+        Collection $inServiceUnits,
+        array $occupiedUnitIdsByDate,
+        int $roomId,
+        string $periodMode,
+        string $column,
+    ): array {
+        $value = $this->cellValue($inventories, $roomId, $periodMode, $column);
+        $codes = $this->availableUnitCodes($inServiceUnits, $occupiedUnitIdsByDate, $periodMode, $column);
+
+        return [
+            'value' => $value,
+            'tip' => is_numeric($value) ? $this->availabilityTip($codes, $periodMode) : null,
+        ];
+    }
+
+    /**
+     * @param  Collection<int, RoomUnit>  $inServiceUnits
+     * @param  array<string, array<int, true>>  $occupiedUnitIdsByDate
+     * @return list<string>
+     */
+    protected function availableUnitCodes(
+        Collection $inServiceUnits,
+        array $occupiedUnitIdsByDate,
+        string $periodMode,
+        string $column,
+    ): array {
+        if ($periodMode === 'month') {
+            $monthStart = Carbon::parse($column.'-01')->startOfMonth();
+            $monthEnd = $monthStart->copy()->endOfMonth();
+            $codes = [];
+
+            foreach ($inServiceUnits as $unit) {
+                for ($date = $monthStart->copy(); $date->lte($monthEnd); $date->addDay()) {
+                    if (empty($occupiedUnitIdsByDate[$date->toDateString()][$unit->id])) {
+                        $codes[] = (string) $unit->code;
+                        break;
+                    }
+                }
+            }
+
+            return $codes;
+        }
+
+        $codes = [];
+
+        foreach ($inServiceUnits as $unit) {
+            if (empty($occupiedUnitIdsByDate[$column][$unit->id])) {
+                $codes[] = (string) $unit->code;
+            }
+        }
+
+        return $codes;
+    }
+
+    /**
+     * @param  list<string>  $codes
+     */
+    protected function availabilityTip(array $codes, string $periodMode): string
+    {
+        $label = $periodMode === 'month' ? 'この月に空きがある号室' : '空き号室';
+
+        if ($codes === []) {
+            return $label.'はありません';
+        }
+
+        $formatted = collect($codes)
+            ->map(fn (string $code): string => $code.'号室')
+            ->implode('、');
+
+        return $label.': '.$formatted;
     }
 
     /**

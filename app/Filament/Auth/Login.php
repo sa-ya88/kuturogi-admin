@@ -3,6 +3,7 @@
 namespace App\Filament\Auth;
 
 use App\Models\User;
+use App\Support\FieldLimits;
 use DanHarrin\LivewireRateLimiting\Exceptions\TooManyRequestsException;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
@@ -14,10 +15,12 @@ use Filament\Models\Contracts\FilamentUser;
 use Filament\Pages\Auth\Login as BaseLogin;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\ValidationException;
+use Illuminate\Support\HtmlString;
 
 class Login extends BaseLogin
 {
+    protected static string $view = 'filament.pages.auth.login';
+
     protected function getForms(): array
     {
         return [
@@ -57,6 +60,7 @@ class Login extends BaseLogin
         return TextInput::make('password')
             ->label('パスワード')
             ->password()
+            ->maxLength(FieldLimits::PASSWORD)
             ->revealable(filament()->arePasswordsRevealable())
             ->required()
             ->extraInputAttributes(['tabindex' => 2]);
@@ -85,14 +89,18 @@ class Login extends BaseLogin
             || blank($user->login_id)
             || ! Hash::check($data['password'] ?? '', $user->password)
         ) {
-            $this->throwFailureValidationException();
+            $this->addAuthenticationError();
+
+            return null;
         }
 
         if (
             $user instanceof FilamentUser
             && ! $user->canAccessPanel(Filament::getCurrentPanel())
         ) {
-            $this->throwFailureValidationException();
+            $this->addAuthenticationError();
+
+            return null;
         }
 
         Filament::auth()->login($user);
@@ -101,11 +109,9 @@ class Login extends BaseLogin
         return app(LoginResponse::class);
     }
 
-    protected function throwFailureValidationException(): never
+    protected function addAuthenticationError(): void
     {
-        throw ValidationException::withMessages([
-            'data.password' => '氏名またはパスワードが正しくありません。',
-        ]);
+        $this->addError('data.password', '氏名またはパスワードが正しくありません。');
     }
 
     public function getTitle(): string|Htmlable
@@ -113,13 +119,41 @@ class Login extends BaseLogin
         return 'ログイン';
     }
 
+    public function hasLogo(): bool
+    {
+        return false;
+    }
+
     public function getHeading(): string|Htmlable
     {
-        return 'Kuturogi Admin';
+        $name = e((string) config('app.name'));
+        $src = e(asset('images/login-title.webp'));
+
+        return new HtmlString(
+            <<<HTML
+            <img
+                src="{$src}"
+                alt="{$name}"
+                class="mx-auto w-full max-w-md rounded-lg"
+            />
+            HTML
+        );
+    }
+
+    /**
+     * @return array<Action>
+     */
+    protected function getFormActions(): array
+    {
+        return [
+            $this->getAuthenticateFormAction(),
+        ];
     }
 
     protected function getAuthenticateFormAction(): Action
     {
-        return parent::getAuthenticateFormAction()->label('ログイン');
+        return Action::make('authenticate')
+            ->label('ログイン')
+            ->action('authenticate');
     }
 }

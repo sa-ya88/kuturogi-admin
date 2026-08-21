@@ -6,12 +6,14 @@ use App\Models\Reservation;
 use App\Models\ReservationStay;
 use App\Models\RoomUnit;
 use App\Services\ReservationStayService;
+use App\Support\FieldLimits;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Validation\ValidationException;
 
 class StaysRelationManager extends RelationManager
 {
@@ -27,7 +29,7 @@ class StaysRelationManager extends RelationManager
             Forms\Components\TextInput::make('representative_name')
                 ->label('代表者名')
                 ->required()
-                ->maxLength(255),
+                ->maxLength(FieldLimits::PERSON_NAME),
             Forms\Components\Select::make('room_unit_id')
                 ->label('個別客室')
                 ->options(function (?ReservationStay $record): array {
@@ -96,7 +98,7 @@ class StaysRelationManager extends RelationManager
                                 $record->fresh(),
                                 filled($unitId) ? (int) $unitId : null,
                             );
-                        } catch (\Illuminate\Validation\ValidationException $e) {
+                        } catch (ValidationException $e) {
                             Notification::make()
                                 ->title('部屋を割り当てできません')
                                 ->body(collect($e->errors())->flatten()->first() ?: $e->getMessage())

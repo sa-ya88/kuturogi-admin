@@ -9,6 +9,7 @@ use App\Services\KuturogiSyncService;
 use App\Services\RoomAvailabilitySnapshot;
 use App\Services\RoomImageService;
 use App\Services\RoomInventoryService;
+use App\Support\RoomDetails;
 use Filament\Actions;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
@@ -46,6 +47,7 @@ class EditRoom extends EditRecord
 
         // 在庫数は個別客室（稼働中）から算出。フォームでは変更しない。
         $data['stock_count'] = $this->record->inServiceUnitsCount();
+        $data['details'] = RoomDetails::normalize($data['details'] ?? []);
 
         return $data;
     }
@@ -84,6 +86,7 @@ class EditRoom extends EditRecord
     {
         return [
             Actions\DeleteAction::make()
+                ->modalDescription('予約履歴（過去・キャンセル済みを含む）がある客室タイプは削除できません。サイトから外す場合は「公開」をOFFにしてください。')
                 ->action(function (Room $record) {
                     try {
                         app(KuturogiSyncService::class)->deleteRoomWithSync($record);
@@ -101,7 +104,7 @@ class EditRoom extends EditRecord
                             ->danger()
                             ->send();
 
-                        throw new Halt();
+                        throw new Halt;
                     }
                 }),
         ];

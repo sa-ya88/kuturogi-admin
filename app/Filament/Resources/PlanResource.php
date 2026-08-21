@@ -5,15 +5,21 @@ namespace App\Filament\Resources;
 use App\Filament\Concerns\AuthorizesStaffReadOnlyMutations;
 use App\Filament\Resources\PlanResource\Pages;
 use App\Models\Plan;
+use App\Services\KuturogiSyncService;
+use App\Support\FieldLimits;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Filament\Infolists;
 use Filament\Infolists\Infolist;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Support\Exceptions\Halt;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Storage;
 
 class PlanResource extends Resource
 {
@@ -37,13 +43,14 @@ class PlanResource extends Resource
                     Forms\Components\TextInput::make('name')
                         ->label('プラン名')
                         ->required()
-                        ->maxLength(255),
+                        ->maxLength(FieldLimits::TITLE),
                     Forms\Components\TextInput::make('price_per_person')
                         ->label('1人料金')
                         ->numeric()
                         ->integer()
                         ->required()
-                        ->minValue(0),
+                        ->minValue(0)
+                        ->maxValue(FieldLimits::PRICE),
                     Forms\Components\Toggle::make('has_breakfast')
                         ->label('朝食付'),
                     Forms\Components\Toggle::make('has_dinner')
@@ -59,6 +66,38 @@ class PlanResource extends Resource
                     Forms\Components\Textarea::make('description')
                         ->label('プラン概要')
                         ->rows(4)
+                        ->maxLength(FieldLimits::PLAN_DESCRIPTION)
+                        ->columnSpanFull(),
+                    Forms\Components\FileUpload::make('images')
+                        ->label('プラン画像')
+                        ->helperText('webp / png / jpeg（jpg）のみ。最大5枚。予約画面のサムネイル・詳細に使われます。')
+                        ->disk('kuturogi_images')
+                        ->visibility('public')
+                        ->image()
+                        ->multiple()
+                        ->maxFiles(5)
+                        ->reorderable()
+                        ->acceptedFileTypes([
+                            'image/webp',
+                            'image/png',
+                            'image/jpeg',
+                        ])
+                        ->storeFiles(false)
+                        ->getUploadedFileUsing(function (Forms\Components\FileUpload $component, string $file): ?array {
+                            $basename = basename(str_replace('/images/', '', $file));
+                            $disk = Storage::disk('kuturogi_images');
+
+                            if ($basename === '' || ! $disk->exists($basename)) {
+                                return null;
+                            }
+
+                            return [
+                                'name' => $basename,
+                                'size' => $disk->size($basename),
+                                'type' => $disk->mimeType($basename) ?: 'image/jpeg',
+                                'url' => route('filament.admin.room-images.preview', ['filename' => $basename]),
+                            ];
+                        })
                         ->columnSpanFull(),
                 ]),
 
@@ -139,7 +178,7 @@ class PlanResource extends Resource
                             Forms\Components\TextInput::make('prompt')
                                 ->label('選択文')
                                 ->required()
-                                ->maxLength(255)
+                                ->maxLength(FieldLimits::PROMPT)
                                 ->placeholder('例: 夕食のメイン料理をお選びください')
                                 ->columnSpanFull(),
                             Forms\Components\Repeater::make('choices')
@@ -148,7 +187,7 @@ class PlanResource extends Resource
                                     Forms\Components\TextInput::make('label')
                                         ->label('選択肢')
                                         ->required()
-                                        ->maxLength(255)
+                                        ->maxLength(FieldLimits::CHOICE)
                                         ->placeholder('例: ビーフ'),
                                 ])
                                 ->minItems(1)
@@ -187,7 +226,9 @@ class PlanResource extends Resource
                         ->numeric()
                         ->integer()
                         ->minValue(1)
-                        ->maxValue(fn (Get $get): ?int => $get('early_bird_discount_type') === Plan::DISCOUNT_TYPE_PERCENT ? 100 : null)
+                        ->maxValue(fn (Get $get): int => $get('early_bird_discount_type') === Plan::DISCOUNT_TYPE_PERCENT
+                            ? 100
+                            : FieldLimits::PRICE)
                         ->suffix(fn (Get $get): ?string => match ($get('early_bird_discount_type')) {
                             Plan::DISCOUNT_TYPE_PERCENT => '％',
                             Plan::DISCOUNT_TYPE_FIXED => '円',
@@ -200,6 +241,7 @@ class PlanResource extends Resource
                         ->numeric()
                         ->integer()
                         ->minValue(1)
+                        ->maxValue(FieldLimits::DAYS)
                         ->suffix('日前')
                         ->helperText('宿泊日が予約日のこの日数以上前の場合に早割が適用されます（例: 30 → 30日以上前の予約）')
                         ->visible(fn (Get $get): bool => (bool) $get('has_early_bird'))
@@ -217,11 +259,55 @@ class PlanResource extends Resource
                 Tables\Columns\TextColumn::make('price_per_person')->label('1人料金')->money('jpy'),
                 Tables\Columns\IconColumn::make('has_breakfast')->boolean()->label('朝食'),
                 Tables\Columns\IconColumn::make('has_dinner')->boolean()->label('夕食'),
-                Tables\Columns\TextColumn::make('rooms_count')->counts('rooms')->label('客室数'),
+                Tables\Columns\TextColumn::make('rooms_count')->counts('rooms')->label('客室タイプ数'),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make()
+                    ->successNotificationTitle('プランを削除し、kuturogi からも削除しました')
+                    ->modalDescription('予約履歴（過去・キャンセル済みを含む）があるプランは削除できません。サイトから外す場合は「公開」をOFFにしてください。')
+                    ->action(function (Plan $record) {
+                        try {
+                            app(KuturogiSyncService::class)->deletePlanWithSync($record);
+                        } catch (\Throwable $e) {
+                            Notification::make()
+                                ->title('削除できません')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->send();
+
+                            throw new Halt;
+                        }
+                    }),
+            ])
+            ->bulkActions([
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->modalDescription('予約履歴（過去・キャンセル済みを含む）があるプランは削除できません。サイトから外す場合は「公開」をOFFにしてください。')
+                        ->action(function (Collection $records) {
+                            $syncService = app(KuturogiSyncService::class);
+
+                            foreach ($records as $record) {
+                                try {
+                                    $syncService->deletePlanWithSync($record);
+                                } catch (\Throwable $e) {
+                                    Notification::make()
+                                        ->title('削除できません')
+                                        ->body("{$record->name}: {$e->getMessage()}")
+                                        ->danger()
+                                        ->send();
+
+                                    throw new Halt;
+                                }
+                            }
+
+                            Notification::make()
+                                ->title('選択したプランを kuturogi からも削除しました')
+                                ->success()
+                                ->send();
+                        }),
+                ]),
             ])
             ->recordUrl(fn (Plan $record): string => static::getUrl(
                 auth()->user()?->isAdmin() ? 'edit' : 'view',
@@ -246,6 +332,24 @@ class PlanResource extends Resource
                 Infolists\Components\TextEntry::make('description')
                     ->label('プラン概要')
                     ->placeholder('—')
+                    ->columnSpanFull(),
+                Infolists\Components\TextEntry::make('images')
+                    ->label('プラン画像')
+                    ->formatStateUsing(function (mixed $state): string {
+                        if (is_string($state) && $state !== '') {
+                            $decoded = json_decode($state, true);
+                            $state = is_array($decoded) ? $decoded : [$state];
+                        }
+
+                        if (! is_array($state) || $state === []) {
+                            return '—';
+                        }
+
+                        return collect($state)
+                            ->filter(fn (mixed $path): bool => is_string($path) && $path !== '')
+                            ->map(fn (string $path): string => basename($path))
+                            ->implode(', ') ?: '—';
+                    })
                     ->columnSpanFull(),
             ]),
             Infolists\Components\Section::make('対象客室')->schema([

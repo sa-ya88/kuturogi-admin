@@ -21,6 +21,13 @@ trait AuthorizesAdminOnly
 
     public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
     {
-        return auth()->user()?->isAdmin() ?? false;
+        return \App\Support\DemoMode::allowsDeletes()
+            && (auth()->user()?->isAdmin() ?? false);
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return \App\Support\DemoMode::allowsDeletes()
+            && (auth()->user()?->isAdmin() ?? false);
     }
 }

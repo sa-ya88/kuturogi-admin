@@ -31,12 +31,20 @@
                     <tr>
                         <td>{{ $row['room'] }}</td>
                         @foreach ($data['columns'] as $column)
-                            @php($value = $row['cells'][$column])
-                            <td @class([
-                                'kuturogi-calendar__cell',
-                                'kuturogi-calendar__cell--zero' => $value === 0,
-                                'kuturogi-calendar__cell--low' => $value === 1,
-                            ])>
+                            @php($cell = $row['cells'][$column])
+                            @php($value = $cell['value'])
+                            <td
+                                @class([
+                                    'kuturogi-calendar__cell',
+                                    'kuturogi-calendar__cell--zero' => $value === 0,
+                                    'kuturogi-calendar__cell--low' => $value === 1,
+                                    'kuturogi-calendar__cell--tip' => filled($cell['tip'] ?? null),
+                                ])
+                                @if (filled($cell['tip'] ?? null))
+                                    data-tip="{{ $cell['tip'] }}"
+                                    tabindex="0"
+                                @endif
+                            >
                                 {{ $value }}
                             </td>
                         @endforeach

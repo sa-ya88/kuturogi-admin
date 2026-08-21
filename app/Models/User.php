@@ -14,9 +14,15 @@ class User extends Authenticatable implements FilamentUser
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
+    protected $table = 'staff_users';
+
     public const ROLE_ADMIN = 'admin';
 
     public const ROLE_STAFF = 'staff';
+
+    public const DEMO_EMAIL = 'demo@kuturogi.local';
+
+    public const DEMO_LOGIN_ID = 'k000001';
 
     protected $fillable = [
         'name',
@@ -70,6 +76,12 @@ class User extends Authenticatable implements FilamentUser
     public function isStaff(): bool
     {
         return $this->role === self::ROLE_STAFF;
+    }
+
+    public function isDemoGuest(): bool
+    {
+        return $this->email === self::DEMO_EMAIL
+            || $this->login_id === self::DEMO_LOGIN_ID;
     }
 
     public function roleLabel(): string

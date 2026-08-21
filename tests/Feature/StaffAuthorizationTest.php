@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Filament\Pages\PricingSettings;
 use App\Filament\Resources\ReservationResource;
 use App\Filament\Resources\ReservationResource\Pages\EditReservation;
+use App\Filament\Resources\RoomDetailOptionResource;
 use App\Filament\Resources\RoomFeatureOptionResource;
 use App\Filament\Resources\UserResource;
 use App\Models\Plan;
@@ -34,9 +36,14 @@ class StaffAuthorizationTest extends TestCase
         $this->get('/admin/users/'.$admin->id.'/edit')->assertForbidden();
         $this->get('/admin/room-feature-options')->assertForbidden();
         $this->get('/admin/room-feature-options/create')->assertForbidden();
+        $this->get('/admin/room-detail-options')->assertForbidden();
+        $this->get('/admin/room-detail-options/create')->assertForbidden();
+        $this->get(PricingSettings::getUrl())->assertForbidden();
 
         $this->assertFalse(UserResource::canViewAny());
         $this->assertFalse(RoomFeatureOptionResource::canViewAny());
+        $this->assertFalse(RoomDetailOptionResource::canViewAny());
+        $this->assertFalse(PricingSettings::canAccess());
     }
 
     public function test_admin_can_access_admin_only_screens(): void
@@ -49,8 +56,12 @@ class StaffAuthorizationTest extends TestCase
 
         $this->get('/admin/users')->assertOk();
         $this->get('/admin/room-feature-options')->assertOk();
+        $this->get('/admin/room-detail-options')->assertOk();
+        $this->get(PricingSettings::getUrl())->assertOk();
         $this->assertTrue(UserResource::canViewAny());
         $this->assertTrue(RoomFeatureOptionResource::canViewAny());
+        $this->assertTrue(RoomDetailOptionResource::canViewAny());
+        $this->assertTrue(PricingSettings::canAccess());
     }
 
     public function test_staff_cannot_delete_reservations(): void

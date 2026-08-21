@@ -52,9 +52,9 @@ class ReservationCalendar extends Page implements HasForms
 
     public function mount(): void
     {
-        $monthStart = now()->startOfMonth();
-        $this->appliedFrom = $monthStart->format('Y-m-d');
-        $this->appliedTo = $monthStart->copy()->addDays(30)->format('Y-m-d');
+        [$from, $to] = $this->defaultDateRange();
+        $this->appliedFrom = $from;
+        $this->appliedTo = $to;
         $this->syncFiltersFromApplied();
     }
 
@@ -228,12 +228,9 @@ class ReservationCalendar extends Page implements HasForms
      */
     protected function defaultDateRange(): array
     {
-        $monthStart = now()->startOfMonth();
+        $range = ListReservations::defaultListDateRange();
 
-        return [
-            $monthStart->format('Y-m-d'),
-            $monthStart->copy()->addDays(30)->format('Y-m-d'),
-        ];
+        return [$range['from'], $range['to']];
     }
 
     protected function isDailyRangeValid(array $state): bool

@@ -35,8 +35,17 @@ class ViewCustomer extends ViewRecord
                         Infolists\Components\TextEntry::make('name_kana')->label('フリガナ'),
                         Infolists\Components\TextEntry::make('email')->label('メールアドレス'),
                         Infolists\Components\TextEntry::make('tel')->label('電話'),
-                        Infolists\Components\TextEntry::make('birthday')->label('生年月日')->date(),
-                        Infolists\Components\TextEntry::make('gender')->label('性別'),
+                        Infolists\Components\TextEntry::make('birthday')
+                            ->label('生年月日')
+                            ->date('Y年m月d日'),
+                        Infolists\Components\TextEntry::make('gender')
+                            ->label('性別')
+                            ->formatStateUsing(fn (?string $state): string => match ($state) {
+                                'male' => '男性',
+                                'female' => '女性',
+                                'other' => 'その他',
+                                default => $state ?? '—',
+                            }),
                         Infolists\Components\TextEntry::make('zip_code')->label('郵便番号'),
                         Infolists\Components\TextEntry::make('address')->label('住所')->columnSpanFull(),
                     ]),

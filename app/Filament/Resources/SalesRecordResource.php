@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\SalesRecordResource\Pages;
 use App\Models\SalesRecord;
+use App\Support\FieldLimits;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -34,7 +35,12 @@ class SalesRecordResource extends Resource
             Forms\Components\Select::make('reservation_id')
                 ->relationship('reservation', 'id')
                 ->required(),
-            Forms\Components\TextInput::make('amount')->numeric()->required(),
+            Forms\Components\TextInput::make('amount')
+                ->numeric()
+                ->integer()
+                ->minValue(0)
+                ->maxValue(FieldLimits::PRICE)
+                ->required(),
             Forms\Components\DateTimePicker::make('recorded_at')->required(),
             Forms\Components\Select::make('status')
                 ->options([
@@ -42,7 +48,8 @@ class SalesRecordResource extends Resource
                     SalesRecord::STATUS_CANCELLED => '取消',
                 ])
                 ->required(),
-            Forms\Components\Textarea::make('notes'),
+            Forms\Components\Textarea::make('notes')
+                ->maxLength(FieldLimits::NOTES),
         ]);
     }
 

@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Concerns\AuthorizesAdminOnly;
 use App\Filament\Resources\RoomFeatureOptionResource\Pages;
 use App\Models\RoomFeatureOption;
+use App\Support\FieldLimits;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
@@ -23,11 +24,11 @@ class RoomFeatureOptionResource extends Resource
 
     protected static ?string $navigationGroup = '設定';
 
-    protected static ?string $navigationLabel = '設備・特徴';
+    protected static ?string $navigationLabel = 'アピールポイント';
 
-    protected static ?string $modelLabel = '設備・特徴';
+    protected static ?string $modelLabel = 'アピールポイント';
 
-    protected static ?string $pluralModelLabel = '設備・特徴';
+    protected static ?string $pluralModelLabel = 'アピールポイント';
 
     protected static ?int $navigationSort = 100;
 
@@ -37,7 +38,7 @@ class RoomFeatureOptionResource extends Resource
             Forms\Components\TextInput::make('name')
                 ->label('名称')
                 ->required()
-                ->maxLength(255)
+                ->maxLength(FieldLimits::OPTION_NAME)
                 ->unique(ignoreRecord: true),
             Forms\Components\TextInput::make('sort_order')
                 ->label('表示順')
@@ -45,12 +46,13 @@ class RoomFeatureOptionResource extends Resource
                 ->integer()
                 ->required()
                 ->minValue(1)
+                ->maxValue(FieldLimits::SORT)
                 ->step(1)
                 ->default(fn () => (int) RoomFeatureOption::max('sort_order') + 1),
             Forms\Components\Toggle::make('is_active')
                 ->label('有効')
                 ->default(true)
-                ->helperText('無効にすると客室の選択肢に表示されません'),
+                ->helperText('無効にすると客室のアピールポイント選択肢に表示されません'),
         ]);
     }
 
@@ -58,9 +60,6 @@ class RoomFeatureOptionResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('sort_order')
-                    ->label('表示順')
-                    ->sortable(),
                 Tables\Columns\TextColumn::make('name')
                     ->label('名称')
                     ->searchable()
@@ -69,7 +68,6 @@ class RoomFeatureOptionResource extends Resource
                     ->label('有効')
                     ->boolean(),
             ])
-            ->reorderable('sort_order')
             ->defaultSort('sort_order')
             ->actions([
                 Tables\Actions\EditAction::make(),
@@ -78,11 +76,11 @@ class RoomFeatureOptionResource extends Resource
                         if ($record->isUsedByRooms()) {
                             Notification::make()
                                 ->title('削除できません')
-                                ->body('この設備・特徴は客室で使用中です。無効化してください。')
+                                ->body('このアピールポイントは客室で使用中です。無効化してください。')
                                 ->danger()
                                 ->send();
 
-                            throw new Halt();
+                            throw new Halt;
                         }
                     }),
             ])

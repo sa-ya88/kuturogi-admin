@@ -20,5 +20,5 @@
 		}
 	},
 
-	"postCreateCommand": "composer install --no-interaction && (test -f .env || cp .env.example .env) && php artisan key:generate --force && touch database/database.sqlite && php artisan migrate --force",
+	"postCreateCommand": "composer install --no-interaction && (test -f .env || cp .env.example .env) && php artisan key:generate --force && touch database/database.sqlite && php artisan migrate --force && php artisan db:seed --force",
 }

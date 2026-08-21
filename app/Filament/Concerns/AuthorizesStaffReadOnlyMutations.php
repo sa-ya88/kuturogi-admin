@@ -2,6 +2,7 @@
 
 namespace App\Filament\Concerns;
 
+use App\Support\DemoMode;
 use Illuminate\Database\Eloquent\Model;
 
 trait AuthorizesStaffReadOnlyMutations
@@ -28,6 +29,13 @@ trait AuthorizesStaffReadOnlyMutations
 
     public static function canDelete(Model $record): bool
     {
-        return auth()->user()?->isAdmin() ?? false;
+        return DemoMode::allowsDeletes()
+            && (auth()->user()?->isAdmin() ?? false);
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return DemoMode::allowsDeletes()
+            && (auth()->user()?->isAdmin() ?? false);
     }
 }

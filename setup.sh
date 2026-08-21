@@ -25,11 +25,18 @@ fi
 echo "==> Running migrations..."
 php artisan migrate --force
 
+if ! grep -q '^DEMO_MODE=' .env 2>/dev/null; then
+    printf '\nDEMO_MODE=true\n' >> .env
+fi
+
+echo "==> Seeding demo data..."
+php artisan db:seed --force
+
 echo ""
 echo "Setup complete."
 echo ""
 echo "Next steps:"
-echo "  php artisan make:filament-user   # 管理ユーザー作成（初回のみ）"
 echo "  php artisan serve --port=8081    # 開発サーバー"
+echo "  ブラウザで /admin → 氏名を選択し、パスワード demo でログイン"
 echo "  npm run dev                      # Vite 開発サーバー（アセット変更時）"
 echo "  php artisan queue:work           # Webhook 非同期処理（別ターミナル）"

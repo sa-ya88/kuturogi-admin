@@ -11,6 +11,6 @@ class CreateRoomFeatureOption extends CreateRecord
 
     protected function getCreatedNotificationTitle(): ?string
     {
-        return '設備・特徴を追加しました';
+        return 'アピールポイントを追加しました';
     }
 }

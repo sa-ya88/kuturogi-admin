@@ -2,9 +2,12 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Forms\Components\DemoPersonalDataNotice;
 use App\Filament\Resources\ReservationResource\Pages;
 use App\Filament\Resources\ReservationResource\RelationManagers;
 use App\Models\Reservation;
+use App\Support\DemoMode;
+use App\Support\FieldLimits;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -28,6 +31,7 @@ class ReservationResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
+            DemoPersonalDataNotice::make(),
             Forms\Components\Select::make('room_id')
                 ->label('客室タイプ')
                 ->relationship('room', 'name')
@@ -62,26 +66,41 @@ class ReservationResource extends Resource
             Forms\Components\TextInput::make('guest_count')
                 ->label('人数')
                 ->numeric()
+                ->integer()
                 ->required()
+                ->minValue(1)
+                ->maxValue(FieldLimits::COUNT)
                 ->default(2),
             Forms\Components\TextInput::make('room_count')
                 ->label('室数')
                 ->numeric()
+                ->integer()
                 ->required()
+                ->minValue(1)
+                ->maxValue(FieldLimits::COUNT)
                 ->default(1),
             Forms\Components\TextInput::make('adult_count')
                 ->label('大人')
                 ->numeric()
+                ->integer()
                 ->required()
+                ->minValue(0)
+                ->maxValue(FieldLimits::COUNT)
                 ->default(2),
             Forms\Components\TextInput::make('child_count')
                 ->label('子供')
                 ->numeric()
+                ->integer()
+                ->minValue(0)
+                ->maxValue(FieldLimits::COUNT)
                 ->default(0),
             Forms\Components\TextInput::make('total_price')
                 ->label('合計')
                 ->numeric()
-                ->required(),
+                ->integer()
+                ->required()
+                ->minValue(0)
+                ->maxValue(FieldLimits::PRICE),
             Forms\Components\Select::make('status')
                 ->label('予約状況')
                 ->options([
@@ -95,15 +114,25 @@ class ReservationResource extends Resource
                 ->selectablePlaceholder(false),
             Forms\Components\TextInput::make('guest_email')
                 ->label('メールアドレス')
-                ->email(),
+                ->email()
+                ->maxLength(FieldLimits::EMAIL)
+                ->placeholder(fn (): ?string => DemoMode::enabled() ? DemoMode::dummyEmail() : null)
+                ->helperText(fn (): ?string => DemoMode::enabled()
+                    ? '実在のメールアドレスは入力しないでください'
+                    : null),
             Forms\Components\TextInput::make('guest_tel')
-                ->label('電話'),
+                ->label('電話')
+                ->maxLength(FieldLimits::TEL)
+                ->placeholder(fn (): ?string => DemoMode::enabled() ? DemoMode::dummyTel() : null),
             Forms\Components\Select::make('payment_method')
                 ->label('支払い方法')
                 ->options(['local' => '現地払い', 'credit' => 'クレジット'])
                 ->default('local')
                 ->native(false)
-                ->selectablePlaceholder(false),
+                ->selectablePlaceholder(false)
+                ->helperText(fn (): ?string => DemoMode::enabled()
+                    ? 'クレジットは Stripe テストモードのみ。カード番号は '.DemoMode::stripeTestCard()
+                    : null),
             Forms\Components\Placeholder::make('payment_status_display')
                 ->label('決済状況')
                 ->content(fn (?Reservation $record): string => Reservation::paymentStatusLabel($record?->payment_status)
@@ -140,6 +169,20 @@ class ReservationResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\TextColumn::make('kuturogi_reservation_id')
+                    ->label('予約番号')
+                    ->state(fn (Reservation $record): string => $record->numberForDisplay())
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        $normalized = ltrim($search, '#');
+
+                        return $query->where(function (Builder $inner) use ($normalized): void {
+                            $inner
+                                ->where('kuturogi_reservation_id', $normalized)
+                                ->orWhere('id', $normalized);
+                        });
+                    })
+                    ->sortable()
+                    ->tooltip('ゲストサイトの予約確認に表示される番号'),
                 Tables\Columns\TextColumn::make('guest_name')->label('ゲスト名')->searchable(),
                 Tables\Columns\TextColumn::make('room.name')->label('客室タイプ'),
                 Tables\Columns\TextColumn::make('assigned_units')
@@ -235,11 +278,19 @@ class ReservationResource extends Resource
 
     public static function canDelete(Model $record): bool
     {
+        if (! \App\Support\DemoMode::allowsDeletes()) {
+            return false;
+        }
+
         return auth()->user()?->isAdmin() ?? false;
     }
 
     public static function canDeleteAny(): bool
     {
+        if (! \App\Support\DemoMode::allowsDeletes()) {
+            return false;
+        }
+
         return auth()->user()?->isAdmin() ?? false;
     }
 

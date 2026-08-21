@@ -6,6 +6,7 @@ use App\Models\Reservation;
 use RuntimeException;
 use Stripe\Exception\ApiErrorException;
 use Stripe\PaymentIntent;
+use Stripe\Refund;
 use Stripe\StripeClient;
 
 class StripePaymentService
@@ -14,7 +15,26 @@ class StripePaymentService
 
     public function isConfigured(): bool
     {
-        return filled(config('services.stripe.secret'));
+        $secret = config('services.stripe.secret');
+
+        return filled($secret) && str_starts_with((string) $secret, 'sk_test_');
+    }
+
+    /**
+     * ポートフォリオ公開用のため、テストモードのキー以外は拒否する。
+     */
+    public static function assertTestModeKeys(?string $secret = null, ?string $key = null): void
+    {
+        $secret ??= config('services.stripe.secret');
+        $key ??= config('services.stripe.key');
+
+        if (filled($secret) && ! str_starts_with((string) $secret, 'sk_test_')) {
+            throw new RuntimeException('Stripe はテストモード（sk_test_）のシークレットのみ使用できます。');
+        }
+
+        if (filled($key) && ! str_starts_with((string) $key, 'pk_test_')) {
+            throw new RuntimeException('Stripe はテストモード（pk_test_）の公開鍵のみ使用できます。');
+        }
     }
 
     protected function client(): StripeClient
@@ -27,6 +47,8 @@ class StripePaymentService
         if (blank($secret)) {
             throw new RuntimeException('STRIPE_SECRET is not configured.');
         }
+
+        self::assertTestModeKeys($secret, config('services.stripe.key'));
 
         return $this->stripe = new StripeClient($secret);
     }
@@ -68,7 +90,7 @@ class StripePaymentService
         throw new RuntimeException('与信取消できない決済状態です（'.$intent->status.'）。');
     }
 
-    public function refundPaymentIntent(string $paymentIntentId): \Stripe\Refund
+    public function refundPaymentIntent(string $paymentIntentId): Refund
     {
         return $this->client()->refunds->create([
             'payment_intent' => $paymentIntentId,

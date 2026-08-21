@@ -9,6 +9,7 @@ use App\Models\Reservation;
 use App\Models\Room;
 use App\Models\RoomInventory;
 use App\Models\SalesRecord;
+use App\Support\RoomDetails;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -23,8 +24,16 @@ class KuturogiSyncService
         protected KuturogiApiClient $apiClient,
     ) {}
 
+    public function usesSharedDatabase(): bool
+    {
+        return (bool) config('kuturogi.shared_database');
+    }
+
     public function syncRooms(): int
     {
+        if ($this->usesSharedDatabase()) {
+            return 0;
+        }
         $response = $this->apiClient->getRooms();
         $response->throw();
 
@@ -41,6 +50,7 @@ class KuturogiSyncService
                     'available_to' => $data['available_to'] ?? null,
                     'description' => $data['description'] ?? null,
                     'features' => $data['features'] ?? null,
+                    'details' => RoomDetails::normalize($data['details'] ?? null),
                     'images' => $data['images'] ?? null,
                     'is_active' => $data['is_active'] ?? true,
                     'sort_order' => $data['sort_order'] ?? 0,
@@ -64,6 +74,9 @@ class KuturogiSyncService
 
     public function syncPlans(): int
     {
+        if ($this->usesSharedDatabase()) {
+            return 0;
+        }
         $response = $this->apiClient->getPlans();
         $response->throw();
 
@@ -96,6 +109,9 @@ class KuturogiSyncService
 
     public function syncInventories(?string $from = null, ?string $to = null): int
     {
+        if ($this->usesSharedDatabase()) {
+            return 0;
+        }
         $filters = array_filter([
             'from' => $from ?? now()->format('Y-m-d'),
             'to' => $to ?? now()->addMonths(3)->format('Y-m-d'),
@@ -128,6 +144,9 @@ class KuturogiSyncService
 
     public function syncReservations(?string $since = null): int
     {
+        if ($this->usesSharedDatabase()) {
+            return 0;
+        }
         $filters = array_filter(['since' => $since]);
 
         $response = $this->apiClient->listReservations($filters);
@@ -153,6 +172,9 @@ class KuturogiSyncService
      */
     public function syncCustomers(?string $since = null): int
     {
+        if ($this->usesSharedDatabase()) {
+            return 0;
+        }
         $filters = array_filter(['since' => $since]);
 
         $response = $this->apiClient->getUsers($filters);
@@ -221,6 +243,14 @@ class KuturogiSyncService
      */
     public function pushReservationToKuturogi(Reservation $reservation): Reservation
     {
+        if ($this->usesSharedDatabase()) {
+            $reservation->update([
+                'kuturogi_reservation_id' => $reservation->id,
+                'synced_at' => now(),
+            ]);
+
+            return $reservation->fresh();
+        }
         $room = $reservation->room;
         $plan = $reservation->plan;
 
@@ -267,7 +297,7 @@ class KuturogiSyncService
         $settlement = app(ReservationPaymentSettlementService::class);
         $reservation = $settlement->settleForCancellation($reservation);
 
-        if ($reservation->kuturogi_reservation_id) {
+        if (! $this->usesSharedDatabase() && $reservation->kuturogi_reservation_id) {
             $response = $this->apiClient->cancelReservation(
                 $reservation->kuturogi_reservation_id,
                 $reservation->room_count
@@ -424,6 +454,9 @@ class KuturogiSyncService
 
     public function pushInventoryToKuturogi(RoomInventory $inventory): void
     {
+        if ($this->usesSharedDatabase()) {
+            return;
+        }
         $room = $inventory->room;
 
         if (! $room->kuturogi_room_id) {
@@ -461,6 +494,9 @@ class KuturogiSyncService
      */
     public function pushInventoriesToKuturogi(Room $room, Collection $inventories): void
     {
+        if ($this->usesSharedDatabase()) {
+            return;
+        }
         if (! $room->kuturogi_room_id || $inventories->isEmpty()) {
             return;
         }
@@ -495,6 +531,11 @@ class KuturogiSyncService
      */
     public function pushRoomToKuturogi(Room $room): Room
     {
+        if ($this->usesSharedDatabase()) {
+            $room->update(['kuturogi_room_id' => $room->kuturogi_room_id ?: $room->id]);
+
+            return $room->fresh();
+        }
         $payload = [
             'name' => $room->name,
             'price_per_person' => $room->price_per_person,
@@ -503,6 +544,7 @@ class KuturogiSyncService
             'available_to' => $room->available_to?->format('Y-m-d'),
             'description' => $room->description,
             'features' => $room->features ?? [],
+            'details' => RoomDetails::normalize($room->details),
             'images' => $room->images ?? [],
             'is_active' => $room->is_active,
             'sort_order' => $room->sort_order,
@@ -515,7 +557,14 @@ class KuturogiSyncService
         if ($room->kuturogi_room_id) {
             $response = $this->apiClient->updateRoom($room->kuturogi_room_id, $payload);
         } else {
-            $response = $this->apiClient->createRoom($payload);
+            $existingId = $this->findKuturogiRoomIdByName($room->name);
+
+            if ($existingId) {
+                $room->update(['kuturogi_room_id' => $existingId]);
+                $response = $this->apiClient->updateRoom($existingId, $payload);
+            } else {
+                $response = $this->apiClient->createRoom($payload);
+            }
         }
 
         $response->throw();
@@ -528,10 +577,82 @@ class KuturogiSyncService
     }
 
     /**
+     * admin に紐付いていない kuturogi 客室を削除する。予約がある場合は非公開にする。
+     *
+     * @return array{deleted: int, unpublished: int}
+     */
+    public function pruneUnlinkedKuturogiRooms(): array
+    {
+        if ($this->usesSharedDatabase()) {
+            return ['deleted' => 0, 'unpublished' => 0];
+        }
+        $response = $this->apiClient->getRooms();
+        $response->throw();
+
+        $linkedIds = Room::query()
+            ->whereNotNull('kuturogi_room_id')
+            ->pluck('kuturogi_room_id')
+            ->map(fn (mixed $id): int => (int) $id)
+            ->all();
+
+        $deleted = 0;
+        $unpublished = 0;
+
+        foreach ($response->json() as $data) {
+            $kuturogiRoomId = (int) ($data['id'] ?? 0);
+
+            if ($kuturogiRoomId === 0 || in_array($kuturogiRoomId, $linkedIds, true)) {
+                continue;
+            }
+
+            $deleteResponse = $this->apiClient->deleteRoom($kuturogiRoomId);
+
+            if ($deleteResponse->successful() || $deleteResponse->status() === 404) {
+                $deleted++;
+
+                continue;
+            }
+
+            if ($deleteResponse->status() === 422) {
+                $this->apiClient->updateRoom($kuturogiRoomId, ['is_active' => false])->throw();
+                $unpublished++;
+
+                continue;
+            }
+
+            $deleteResponse->throw();
+        }
+
+        return [
+            'deleted' => $deleted,
+            'unpublished' => $unpublished,
+        ];
+    }
+
+    private function findKuturogiRoomIdByName(string $name): ?int
+    {
+        $response = $this->apiClient->getRooms();
+        $response->throw();
+
+        foreach ($response->json() as $data) {
+            if (($data['name'] ?? null) === $name && isset($data['id'])) {
+                return (int) $data['id'];
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * プランを kuturogi へ新規登録または更新する。
      */
     public function pushPlanToKuturogi(Plan $plan): Plan
     {
+        if ($this->usesSharedDatabase()) {
+            $plan->update(['kuturogi_plan_id' => $plan->kuturogi_plan_id ?: $plan->id]);
+
+            return $plan->fresh();
+        }
         $plan->load('rooms');
 
         $payload = [
@@ -571,20 +692,115 @@ class KuturogiSyncService
         return $plan->fresh();
     }
 
+    public function deletePlanOnKuturogi(Plan $plan): void
+    {
+        if ($this->usesSharedDatabase() || ! $plan->kuturogi_plan_id) {
+            return;
+        }
+
+        $response = $this->apiClient->deletePlan($plan->kuturogi_plan_id);
+
+        if ($response->successful() || $response->status() === 404) {
+            return;
+        }
+
+        throw new \RuntimeException(
+            $response->json('message') ?: 'kuturogi 側でプランを削除できませんでした。'
+        );
+    }
+
+    public function ensurePlanDeletable(Plan $plan): void
+    {
+        if ($plan->hasBlockingReservations()) {
+            throw new \RuntimeException($plan->deletionBlockedMessage());
+        }
+    }
+
+    public function deletePlanWithSync(Plan $plan): void
+    {
+        $this->ensurePlanDeletable($plan);
+        $this->deletePlanOnKuturogi($plan);
+        app(PlanImageService::class)->deletePlanImages($plan);
+        $plan->rooms()->detach();
+        $plan->roomUnits()->detach();
+        Plan::withoutEvents(fn () => $plan->delete());
+        $this->pruneUnlinkedKuturogiPlans();
+    }
+
+    /**
+     * admin に紐付いていない kuturogi プランを削除する。予約がある場合は客室紐付けを外して非表示にする。
+     *
+     * @return array{deleted: int, detached: int}
+     */
+    public function pruneUnlinkedKuturogiPlans(): array
+    {
+        if ($this->usesSharedDatabase()) {
+            return ['deleted' => 0, 'detached' => 0];
+        }
+        $response = $this->apiClient->getPlans();
+        $response->throw();
+
+        $linkedIds = Plan::query()
+            ->whereNotNull('kuturogi_plan_id')
+            ->pluck('kuturogi_plan_id')
+            ->map(fn (mixed $id): int => (int) $id)
+            ->all();
+
+        $deleted = 0;
+        $detached = 0;
+
+        foreach ($response->json() as $data) {
+            $kuturogiPlanId = (int) ($data['id'] ?? 0);
+
+            if ($kuturogiPlanId === 0 || in_array($kuturogiPlanId, $linkedIds, true)) {
+                continue;
+            }
+
+            $deleteResponse = $this->apiClient->deletePlan($kuturogiPlanId);
+
+            if ($deleteResponse->successful() || $deleteResponse->status() === 404) {
+                $deleted++;
+
+                continue;
+            }
+
+            if ($deleteResponse->status() === 422) {
+                $this->apiClient->updatePlan($kuturogiPlanId, ['room_ids' => []])->throw();
+                $detached++;
+
+                continue;
+            }
+
+            $deleteResponse->throw();
+        }
+
+        return [
+            'deleted' => $deleted,
+            'detached' => $detached,
+        ];
+    }
+
     public function deleteRoomOnKuturogi(Room $room): void
     {
-        if (! $room->kuturogi_room_id) {
+        if ($this->usesSharedDatabase() || ! $room->kuturogi_room_id) {
             return;
         }
 
         $response = $this->apiClient->deleteRoom($room->kuturogi_room_id);
-        $response->throw();
+
+        if ($response->successful() || $response->status() === 404) {
+            return;
+        }
+
+        throw new \RuntimeException(
+            $response->json('message') ?: 'kuturogi 側で客室を削除できませんでした。'
+        );
     }
 
     public function ensureRoomDeletable(Room $room): void
     {
-        if ($room->reservations()->exists()) {
-            throw new \RuntimeException('予約が存在する客室は削除できません。');
+        if ($room->hasBlockingReservations()) {
+            throw new \RuntimeException($room->deletionBlockedMessage());
         }
     }
 
@@ -592,9 +808,10 @@ class KuturogiSyncService
     {
         $this->ensureRoomDeletable($room);
         $this->deleteRoomOnKuturogi($room);
-        app(\App\Services\RoomImageService::class)->deleteRoomImages($room);
+        app(RoomImageService::class)->deleteRoomImages($room);
         $room->plans()->detach();
-        $room->delete();
+        Room::withoutEvents(fn () => $room->delete());
+        $this->pruneUnlinkedKuturogiRooms();
     }
 
     protected function upsertPlan(array $data): Plan
@@ -692,5 +909,206 @@ class KuturogiSyncService
         }
 
         return null;
+    }
+
+    /**
+     * admin の客室・在庫・予約で kuturogi を上書きする。
+     *
+     * @return array{rooms: int, plans: int, reservations: int, inventories: int}
+     */
+    public function overwriteKuturogiFromAdmin(): array
+    {
+        if ($this->usesSharedDatabase()) {
+            return [
+                'rooms' => 0,
+                'plans' => 0,
+                'reservations' => 0,
+                'inventories' => 0,
+            ];
+        }
+        $pdo = $this->kuturogiSqlite();
+        $pdo->exec('PRAGMA foreign_keys = ON');
+        $now = now()->toDateTimeString();
+
+        $roomsPushed = 0;
+        foreach (Room::query()->orderBy('sort_order')->get() as $room) {
+            $this->pushRoomToKuturogi($room->load('plans'));
+            $roomsPushed++;
+        }
+
+        $plansPushed = 0;
+        foreach (Plan::query()->orderBy('id')->get() as $plan) {
+            $this->pushPlanToKuturogi($plan);
+            $plansPushed++;
+        }
+
+        $validUserIds = [];
+        foreach ($pdo->query('SELECT id FROM users') as $row) {
+            $validUserIds[(int) $row['id']] = true;
+        }
+
+        $pdo->beginTransaction();
+
+        try {
+            $pdo->exec('DELETE FROM reservations');
+
+            $insert = $pdo->prepare(
+                'INSERT INTO reservations (
+                    id, user_id, plan_id, room_id, checkin_date, checkout_date,
+                    guest_count, room_count, adult_count, child_count, total_price, status,
+                    guest_name, guest_name_kana, guest_tel, guest_email,
+                    payment_method, payment_status, stripe_payment_intent_id, stripe_latest_charge_id,
+                    authorized_at, paid_at, refunded_at, cancel_fee_amount,
+                    stripe_cancel_fee_payment_intent_id, cancel_fee_uncollected,
+                    selected_choices, selected_option_fees, created_at, updated_at
+                ) VALUES (
+                    :id, :user_id, :plan_id, :room_id, :checkin_date, :checkout_date,
+                    :guest_count, :room_count, :adult_count, :child_count, :total_price, :status,
+                    :guest_name, :guest_name_kana, :guest_tel, :guest_email,
+                    :payment_method, :payment_status, :stripe_payment_intent_id, :stripe_latest_charge_id,
+                    :authorized_at, :paid_at, :refunded_at, :cancel_fee_amount,
+                    :stripe_cancel_fee_payment_intent_id, :cancel_fee_uncollected,
+                    :selected_choices, :selected_option_fees, :created_at, :updated_at
+                )'
+            );
+
+            $reservations = Reservation::query()
+                ->with(['room', 'plan', 'customer'])
+                ->orderBy('id')
+                ->get();
+
+            foreach ($reservations as $reservation) {
+                $kuturogiRoomId = $reservation->room?->kuturogi_room_id;
+                $kuturogiPlanId = $reservation->plan?->kuturogi_plan_id;
+
+                if (! $kuturogiRoomId || ! $kuturogiPlanId) {
+                    throw new \RuntimeException("予約 {$reservation->id} の客室またはプランが kuturogi 未連携です。");
+                }
+
+                $userId = $reservation->customer?->kuturogi_user_id;
+                if ($userId && ! isset($validUserIds[(int) $userId])) {
+                    $userId = null;
+                }
+
+                $insert->execute([
+                    'id' => $reservation->id,
+                    'user_id' => $userId,
+                    'plan_id' => $kuturogiPlanId,
+                    'room_id' => $kuturogiRoomId,
+                    'checkin_date' => $reservation->checkin_date?->toDateString(),
+                    'checkout_date' => $reservation->checkout_date?->toDateString(),
+                    'guest_count' => $reservation->guest_count,
+                    'room_count' => $reservation->room_count,
+                    'adult_count' => $reservation->adult_count,
+                    'child_count' => $reservation->child_count,
+                    'total_price' => $reservation->total_price,
+                    'status' => $reservation->status,
+                    'guest_name' => $reservation->guest_name,
+                    'guest_name_kana' => $reservation->guest_name_kana,
+                    'guest_tel' => $reservation->guest_tel,
+                    'guest_email' => $reservation->guest_email,
+                    'payment_method' => $reservation->payment_method,
+                    'payment_status' => $reservation->payment_status,
+                    'stripe_payment_intent_id' => $reservation->stripe_payment_intent_id,
+                    'stripe_latest_charge_id' => $reservation->stripe_latest_charge_id,
+                    'authorized_at' => optional($reservation->authorized_at)?->toDateTimeString(),
+                    'paid_at' => optional($reservation->paid_at)?->toDateTimeString(),
+                    'refunded_at' => optional($reservation->refunded_at)?->toDateTimeString(),
+                    'cancel_fee_amount' => $reservation->cancel_fee_amount,
+                    'stripe_cancel_fee_payment_intent_id' => $reservation->stripe_cancel_fee_payment_intent_id,
+                    'cancel_fee_uncollected' => $reservation->cancel_fee_uncollected ? 1 : 0,
+                    'selected_choices' => $reservation->selected_choices
+                        ? json_encode($reservation->selected_choices, JSON_UNESCAPED_UNICODE)
+                        : null,
+                    'selected_option_fees' => $reservation->selected_option_fees
+                        ? json_encode($reservation->selected_option_fees, JSON_UNESCAPED_UNICODE)
+                        : null,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
+
+                $reservation->update([
+                    'kuturogi_reservation_id' => $reservation->id,
+                    'synced_at' => now(),
+                ]);
+            }
+
+            $maxId = (int) $pdo->query('SELECT COALESCE(MAX(id), 0) FROM reservations')->fetchColumn();
+            $pdo->exec("DELETE FROM sqlite_sequence WHERE name = 'reservations'");
+            if ($maxId > 0) {
+                $pdo->exec("INSERT INTO sqlite_sequence (name, seq) VALUES ('reservations', {$maxId})");
+            }
+
+            $linkedRoomIds = Room::query()
+                ->whereNotNull('kuturogi_room_id')
+                ->pluck('kuturogi_room_id')
+                ->map(fn (mixed $id): int => (int) $id)
+                ->all();
+
+            if ($linkedRoomIds !== []) {
+                $placeholders = implode(',', array_fill(0, count($linkedRoomIds), '?'));
+                $pdo->prepare("DELETE FROM room_inventories WHERE room_id IN ({$placeholders})")
+                    ->execute($linkedRoomIds);
+            }
+
+            $inventoryInsert = $pdo->prepare(
+                'INSERT INTO room_inventories (room_id, date, remains, created_at, updated_at)
+                 VALUES (:room_id, :date, :remains, :created_at, :updated_at)'
+            );
+
+            $inventoriesPushed = 0;
+            foreach (Room::query()->whereNotNull('kuturogi_room_id')->with('inventories')->get() as $room) {
+                foreach ($room->inventories as $inventory) {
+                    $inventoryInsert->execute([
+                        'room_id' => $room->kuturogi_room_id,
+                        'date' => $inventory->date->toDateString(),
+                        'remains' => $inventory->remains,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ]);
+                    $inventoriesPushed++;
+                }
+            }
+
+            $pdo->commit();
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
+
+        $this->pruneUnlinkedKuturogiRooms();
+        $this->pruneUnlinkedKuturogiPlans();
+
+        try {
+            app(PricingSettingsService::class)->pushToKuturogi();
+        } catch (\Throwable $e) {
+            Log::warning('Failed to push pricing settings while overwriting kuturogi.', [
+                'message' => $e->getMessage(),
+            ]);
+        }
+
+        return [
+            'rooms' => $roomsPushed,
+            'plans' => $plansPushed,
+            'reservations' => $reservations->count(),
+            'inventories' => $inventoriesPushed,
+        ];
+    }
+
+    protected function kuturogiSqlite(): \PDO
+    {
+        $path = (string) env(
+            'KUTUROGI_DATABASE_PATH',
+            dirname(base_path()).'/kuturogi/database/database.sqlite'
+        );
+
+        if (! is_file($path)) {
+            throw new \RuntimeException("kuturogi の SQLite が見つかりません: {$path}");
+        }
+
+        $pdo = new \PDO('sqlite:'.$path);
+        $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+
+        return $pdo;
     }
 }

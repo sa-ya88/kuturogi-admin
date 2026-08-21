@@ -4,7 +4,6 @@ namespace App\Filament\Resources\RoomResource\Pages;
 
 use App\Filament\Resources\RoomResource;
 use App\Filament\Resources\RoomUnitResource;
-use App\Services\KuturogiSyncService;
 use App\Services\RoomSortOrderService;
 use Filament\Actions;
 use Filament\Notifications\Notification;
@@ -51,21 +50,6 @@ class ListRooms extends ListRecords
                 ->icon('heroicon-o-arrow-left')
                 ->color('gray')
                 ->url(RoomUnitResource::getUrl('index')),
-            Actions\Action::make('sync')
-                ->label('kuturogi から同期')
-                ->icon('heroicon-o-arrow-path')
-                ->visible(fn (): bool => auth()->user()?->isAdmin() ?? false)
-                ->action(function (KuturogiSyncService $syncService) {
-                    $rooms = $syncService->syncRooms();
-                    $plans = $syncService->syncPlans();
-                    $inventories = $syncService->syncInventories();
-
-                    Notification::make()
-                        ->title('同期完了')
-                        ->body("客室 {$rooms} / プラン {$plans} / 在庫 {$inventories} 件")
-                        ->success()
-                        ->send();
-                }),
             Actions\CreateAction::make()->label('客室タイプを追加'),
         ];
     }

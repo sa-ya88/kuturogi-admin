@@ -178,6 +178,7 @@ class EditReservation extends EditRecord
                             ->send();
                     }
                 }),
+            Actions\DeleteAction::make(),
         ];
     }
 }

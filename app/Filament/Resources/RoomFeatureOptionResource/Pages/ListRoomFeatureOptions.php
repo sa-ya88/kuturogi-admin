@@ -13,7 +13,7 @@ class ListRoomFeatureOptions extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make()->label('設備・特徴を追加'),
+            Actions\CreateAction::make()->label('アピールポイントを追加'),
         ];
     }
 }
