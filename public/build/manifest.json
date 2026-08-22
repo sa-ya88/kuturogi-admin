@@ -1,0 +1,32 @@
+{
+  "resources/css/app.css": {
+    "file": "assets/app-tn0RQdqM.css",
+    "src": "resources/css/app.css",
+    "isEntry": true,
+    "name": "app",
+    "names": [
+      "app.css"
+    ]
+  },
+  "resources/css/calendars.css": {
+    "file": "assets/calendars-C4mefOyX.css",
+    "src": "resources/css/calendars.css",
+    "isEntry": true,
+    "name": "calendars",
+    "names": [
+      "calendars.css"
+    ]
+  },
+  "resources/js/app.js": {
+    "file": "assets/app-l0sNRNKZ.js",
+    "name": "app",
+    "src": "resources/js/app.js",
+    "isEntry": true
+  },
+  "resources/js/calendars.js": {
+    "file": "assets/calendars-BJ1V9pls.js",
+    "name": "calendars",
+    "src": "resources/js/calendars.js",
+    "isEntry": true
+  }
+}

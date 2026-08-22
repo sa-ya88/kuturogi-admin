@@ -16,7 +16,7 @@ yarn-error.log
 /.fleet
 /.zed
 /node_modules
-/public/build
+# /public/build
 /public/hot
 /public/storage
 /database/*.sqlite
