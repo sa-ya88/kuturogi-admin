@@ -158,19 +158,27 @@ return new class extends Migration
 
     private function reindexStaffUsersTable(): void
     {
-        $indexes = DB::select(
-            "SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'staff_users' AND name LIKE 'users_%'"
-        );
+        foreach (Schema::getIndexes('staff_users') as $index) {
+            $name = $index['name'] ?? '';
 
-        foreach ($indexes as $index) {
-            DB::statement('DROP INDEX IF EXISTS "'.$index->name.'"');
+            if (! is_string($name) || ! str_starts_with($name, 'users_')) {
+                continue;
+            }
+
+            if (! empty($index['primary'])) {
+                continue;
+            }
+
+            Schema::table('staff_users', function (Blueprint $table) use ($index, $name) {
+                if (! empty($index['unique'])) {
+                    $table->dropUnique($name);
+                } else {
+                    $table->dropIndex($name);
+                }
+            });
         }
 
-        $remaining = collect(DB::select(
-            "SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'staff_users'"
-        ))->pluck('name');
-
-        if (! $remaining->contains('staff_users_email_unique')) {
+        if (! $this->staffUsersHasIndex('staff_users_email_unique')) {
             Schema::table('staff_users', function (Blueprint $table) {
                 $table->unique('email', 'staff_users_email_unique');
             });
@@ -178,11 +186,18 @@ return new class extends Migration
 
         if (
             Schema::hasColumn('staff_users', 'login_id')
-            && ! $remaining->contains('staff_users_login_id_unique')
+            && ! $this->staffUsersHasIndex('staff_users_login_id_unique')
         ) {
             Schema::table('staff_users', function (Blueprint $table) {
                 $table->unique('login_id', 'staff_users_login_id_unique');
             });
         }
+    }
+
+    private function staffUsersHasIndex(string $name): bool
+    {
+        return collect(Schema::getIndexes('staff_users'))->contains(
+            fn (array $index) => ($index['name'] ?? '') === $name
+        );
     }
 };
