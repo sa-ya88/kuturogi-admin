@@ -82,6 +82,29 @@ php artisan serve --port=8081
 
 既定では 4 時間ごとに `php artisan demo:refresh`（`db:seed`）が走ります。間隔は `DEMO_REFRESH_HOURS` です。
 
+### ロリポップへのアップロード（404 が出るとき）
+
+Laravel は **公開ディレクトリが `public/`** です。ドメインの公開フォルダがプロジェクト直下だと `/admin` や Filament の CSS/JS が実ファイルとして見つからず、404 が連発します。
+
+1. ユーザー専用ページ → **公開フォルダ設定** で、該当ドメインの公開フォルダを **`…/kuturogi-admin/public`** にする（パスは実際の配置に合わせる）
+2. FileZilla などで **隠しファイルを表示**し、ルートの `.htaccess` と **`public/.htaccess` を必ずアップロードする**（先頭が `.` のファイルは初期設定で飛ばされやすい）
+3. サーバー上で依存関係とアセットを用意する（またはローカルで作ってから上げる）
+
+```bash
+composer install --no-dev --optimize-autoloader
+npm ci && npm run build
+php artisan key:generate
+php artisan migrate --force
+php artisan db:seed
+php artisan storage:link
+chmod -R ug+rwx storage bootstrap/cache
+```
+
+4. `.env` の `APP_URL` を実際の HTTPS URL にする（`http://localhost:8081` のままだとアセットが別ホストを向く）。`APP_DEBUG=false`、`DEMO_MODE=true`
+5. PHP は **8.3 以上**。公開フォルダを変えられない場合は、プロジェクト直下の `.htaccess` がリクエストを `public/` へ流します
+
+`vendor/` と `public/build/` は git に含まれません。アップロード漏れでも画面が崩れたり 404 が出ます。
+
 ### ロリポップでの cron 設定
 
 1. ユーザー専用ページ → **サーバーの管理・設定** → **タスクの追加（cron）**

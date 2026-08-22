@@ -5,6 +5,7 @@
 .env.local
 .env.*.local
 .env.production
+.env_pro
 .phpunit.cache
 .phpunit.result.cache
 auth.json

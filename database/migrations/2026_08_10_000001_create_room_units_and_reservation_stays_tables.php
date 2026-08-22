@@ -34,7 +34,10 @@ return new class extends Migration
             $table->timestamps();
 
             $table->index(['reservation_id', 'sort_order']);
-            $table->index(['room_unit_id', 'checked_in_at', 'checked_out_at']);
+            $table->index(
+                ['room_unit_id', 'checked_in_at', 'checked_out_at'],
+                'res_stays_unit_inout_idx',
+            );
         });
 
         Schema::table('reservations', function (Blueprint $table) {
