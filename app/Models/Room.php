@@ -107,9 +107,6 @@ class Room extends Model
             ->count();
     }
 
-    /**
-     * 稼働中の個別客室数を stock_count に反映し、日別在庫を再同期する。
-     */
     public function syncStockCountFromUnits(bool $syncInventories = true): void
     {
         $previous = null;

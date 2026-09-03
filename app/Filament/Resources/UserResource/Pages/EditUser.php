@@ -20,7 +20,7 @@ class EditUser extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        /** @var User $record */
+
         $record = $this->record;
 
         if ($record->isAdmin()
@@ -32,7 +32,7 @@ class EditUser extends EditRecord
                 ->danger()
                 ->send();
 
-            throw new Halt();
+            throw new Halt;
         }
 
         if ($record->is(auth()->user()) && ($data['role'] ?? null) === User::ROLE_STAFF) {
@@ -42,7 +42,7 @@ class EditUser extends EditRecord
                 ->danger()
                 ->send();
 
-            throw new Halt();
+            throw new Halt;
         }
 
         return $data;

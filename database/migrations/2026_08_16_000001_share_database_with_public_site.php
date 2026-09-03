@@ -115,8 +115,8 @@ return new class extends Migration
             return;
         }
 
-        $pdo = new \PDO('sqlite:'.$legacy, null, null, [
-            \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
+        $pdo = new PDO('sqlite:'.$legacy, null, null, [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         ]);
 
         $this->copyTable($pdo, 'users', [
@@ -129,10 +129,7 @@ return new class extends Migration
         ]);
     }
 
-    /**
-     * @param  list<string>  $columns
-     */
-    private function copyTable(\PDO $source, string $table, array $columns): void
+    private function copyTable(PDO $source, string $table, array $columns): void
     {
         $existing = $source->query("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ".$source->quote($table))->fetchColumn();
 
@@ -140,7 +137,7 @@ return new class extends Migration
             return;
         }
 
-        $rows = $source->query('SELECT * FROM '.$table)->fetchAll(\PDO::FETCH_ASSOC);
+        $rows = $source->query('SELECT * FROM '.$table)->fetchAll(PDO::FETCH_ASSOC);
 
         foreach ($rows as $row) {
             $payload = [];

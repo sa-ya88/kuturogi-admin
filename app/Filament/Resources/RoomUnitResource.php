@@ -183,9 +183,6 @@ class RoomUnitResource extends Resource
             ->defaultSort(fn (Builder $query, string $direction): Builder => $query->orderByRoomNumber($direction));
     }
 
-    /**
-     * 表示日時点のステータスで絞り込む。
-     */
     public static function constrainByDayStatus(Builder $query, string $status, string $date): Builder
     {
         $isToday = $date === now()->toDateString();

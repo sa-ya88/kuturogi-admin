@@ -2,16 +2,6 @@
 
 return [
 
-    /*
-    |--------------------------------------------------------------------------
-    | kuturogi 顧客向けサイト連携設定
-    |--------------------------------------------------------------------------
-    |
-    | kuturogi-admin ↔ kuturogi 間の双方向連携に使用する設定。
-    | 詳細は INTEGRATION.md を参照。
-    |
-    */
-
     'shared_database' => (bool) env('SHARED_DATABASE', false),
 
     'base_url' => env('KUTUROGI_BASE_URL', 'http://localhost:8080'),

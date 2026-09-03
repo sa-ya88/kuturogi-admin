@@ -1,5 +1,3 @@
-# 公開フォルダをプロジェクト直下にした場合のフォールバック。
-# 推奨はドメインの公開フォルダを public/ にすること。
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteRule ^(.*)$ public/$1 [L]

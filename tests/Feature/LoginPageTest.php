@@ -12,6 +12,11 @@ class LoginPageTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_root_redirects_to_admin(): void
+    {
+        $this->get('/')->assertRedirect('/admin');
+    }
+
     public function test_guest_login_button_is_not_shown(): void
     {
         config(['app.demo_mode' => true]);
@@ -44,7 +49,7 @@ class LoginPageTest extends TestCase
             ->assertOk()
             ->assertSee('架空のデモユーザーでログインしてください')
             ->assertSee('パスワードは「demo」です')
-            ->assertSee('客室・プラン・料金・スタッフは削除できません')
+            ->assertSee('客室、プラン、料金、スタッフは削除できません')
             ->assertSee('時間ごとに初期化されます');
     }
 

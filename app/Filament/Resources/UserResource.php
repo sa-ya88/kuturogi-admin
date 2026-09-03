@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Concerns\AuthorizesAdminOnly;
 use App\Filament\Resources\UserResource\Pages;
 use App\Models\User;
+use App\Support\DemoMode;
 use App\Support\FieldLimits;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -118,7 +119,7 @@ class UserResource extends Resource
 
     public static function canDelete(Model $record): bool
     {
-        if (! \App\Support\DemoMode::allowsDeletes()) {
+        if (! DemoMode::allowsDeletes()) {
             return false;
         }
 
@@ -147,7 +148,7 @@ class UserResource extends Resource
 
     public static function canDeleteAny(): bool
     {
-        return \App\Support\DemoMode::allowsDeletes()
+        return DemoMode::allowsDeletes()
             && (auth()->user()?->isAdmin() ?? false);
     }
 

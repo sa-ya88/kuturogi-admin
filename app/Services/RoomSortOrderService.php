@@ -13,9 +13,6 @@ class RoomSortOrderService
         protected KuturogiSyncService $syncService,
     ) {}
 
-    /**
-     * @throws ValidationException
-     */
     public function parseIntegerSortOrder(mixed $value): int
     {
         if ($value === null || $value === '') {
@@ -43,9 +40,6 @@ class RoomSortOrderService
         return $position;
     }
 
-    /**
-     * 指定客室を targetPosition へ割り込ませ、他の客室を後ろへずらす。
-     */
     public function applySortOrder(Room $room, int $targetPosition): void
     {
         DB::transaction(function () use ($room, $targetPosition): void {
@@ -73,10 +67,6 @@ class RoomSortOrderService
             ->each(fn (Room $room) => $this->syncService->pushRoomToKuturogi($room));
     }
 
-    /**
-     * @param  Collection<int, Room>  $rooms
-     * @return Collection<int, Room>
-     */
     private function insertAtPosition(Collection $rooms, Room $room, int $targetPosition): Collection
     {
         $index = min(max($targetPosition - 1, 0), $rooms->count());
@@ -87,9 +77,6 @@ class RoomSortOrderService
             ->values();
     }
 
-    /**
-     * @param  Collection<int, Room>  $rooms
-     */
     private function renumberRooms(Collection $rooms): void
     {
         foreach ($rooms as $index => $room) {

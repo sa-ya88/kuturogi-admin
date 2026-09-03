@@ -1,5 +1,6 @@
 <?php
 
+use App\Console\Commands\RefreshDemoDataCommand;
 use App\Console\Commands\SyncKuturogiCommand;
 use App\Http\Middleware\AllowFilamentAssetCors;
 use App\Http\Middleware\VerifyKuturogiWebhook;
@@ -16,7 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withCommands([
         SyncKuturogiCommand::class,
-        \App\Console\Commands\RefreshDemoDataCommand::class,
+        RefreshDemoDataCommand::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo('/admin/login');
@@ -26,6 +27,5 @@ return Application::configure(basePath: dirname(__DIR__))
             'kuturogi.webhook' => VerifyKuturogiWebhook::class,
         ]);
     })
-    ->withExceptions(function (Exceptions $exceptions): void {
-        //
-    })->create();
+    ->withExceptions(function (Exceptions $exceptions): void {})
+    ->create();

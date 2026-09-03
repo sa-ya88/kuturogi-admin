@@ -83,9 +83,6 @@ class PropertyCatalogSeeder extends Seeder
         }
     }
 
-    /**
-     * @return array<string, Room>
-     */
     private function seedRooms(): array
     {
         $standardFacilities = ['トイレ', '冷暖房', 'テレビ', '冷蔵庫', '金庫', '加湿空気清浄機'];
@@ -224,9 +221,6 @@ class PropertyCatalogSeeder extends Seeder
         return $rooms;
     }
 
-    /**
-     * @param  array<string, Room>  $rooms
-     */
     private function seedPlans(array $rooms): void
     {
         $all = [

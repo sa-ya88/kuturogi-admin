@@ -1,6 +1,3 @@
-/**
- * Shared behavior for reservation / inventory calendar grids.
- */
 document.addEventListener('DOMContentLoaded', () => {
     initCalendars();
 });

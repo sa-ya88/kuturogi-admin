@@ -25,9 +25,6 @@ class RoomDetailOption extends Model
         ];
     }
 
-    /**
-     * @return array<string, string>
-     */
     public static function categoryOptions(): array
     {
         return [
@@ -51,10 +48,6 @@ class RoomDetailOption extends Model
         return $query->where('category', $category);
     }
 
-    /**
-     * @param  list<string>  $selected
-     * @return array<string, string>
-     */
     public static function optionsForSelect(string $category, array $selected = []): array
     {
         $options = static::query()

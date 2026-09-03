@@ -2,21 +2,26 @@
 
 namespace App\Providers;
 
+use App\Events\InventoryUpdated;
+use App\Listeners\LogInventoryUpdate;
+use App\Services\KuturogiApiClient;
+use App\Services\KuturogiSyncService;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->app->singleton(\App\Services\KuturogiApiClient::class);
-        $this->app->singleton(\App\Services\KuturogiSyncService::class);
+        $this->app->singleton(KuturogiApiClient::class);
+        $this->app->singleton(KuturogiSyncService::class);
     }
 
     public function boot(): void
     {
-        \Illuminate\Support\Facades\Event::listen(
-            \App\Events\InventoryUpdated::class,
-            \App\Listeners\LogInventoryUpdate::class,
+        Event::listen(
+            InventoryUpdated::class,
+            LogInventoryUpdate::class,
         );
     }
 }

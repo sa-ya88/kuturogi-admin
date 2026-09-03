@@ -35,7 +35,6 @@ class InventoryCalendar extends Page implements HasForms
 
     protected static string $view = 'filament.pages.inventory-calendar';
 
-    /** @var array{periodMode: string, from: ?string, to: ?string} */
     public array $filters = [
         'periodMode' => 'day',
         'from' => null,
@@ -205,9 +204,6 @@ class InventoryCalendar extends Page implements HasForms
         return Carbon::parse($column)->format('n/j');
     }
 
-    /**
-     * @return array<int, string>
-     */
     protected function dailyColumns(string $from, string $to): array
     {
         $start = Carbon::parse($from)->startOfDay();
@@ -226,9 +222,6 @@ class InventoryCalendar extends Page implements HasForms
         return $dates;
     }
 
-    /**
-     * @return array<int, string>
-     */
     protected function monthlyColumns(string $fromMonth, string $toMonth): array
     {
         $start = Carbon::parse($fromMonth.'-01')->startOfMonth();
@@ -247,9 +240,6 @@ class InventoryCalendar extends Page implements HasForms
         return $months;
     }
 
-    /**
-     * @return array<string, array<int, true>>
-     */
     protected function occupiedUnitIdsByDate(string $rangeStart, string $rangeEnd): array
     {
         $map = [];
@@ -266,12 +256,6 @@ class InventoryCalendar extends Page implements HasForms
         return $map;
     }
 
-    /**
-     * @param  Collection<string, Collection<int, RoomInventory>>  $inventories
-     * @param  Collection<int, RoomUnit>  $inServiceUnits
-     * @param  array<string, array<int, true>>  $occupiedUnitIdsByDate
-     * @return array{value: int|string, tip: ?string}
-     */
     protected function cellData(
         Collection $inventories,
         Collection $inServiceUnits,
@@ -289,11 +273,6 @@ class InventoryCalendar extends Page implements HasForms
         ];
     }
 
-    /**
-     * @param  Collection<int, RoomUnit>  $inServiceUnits
-     * @param  array<string, array<int, true>>  $occupiedUnitIdsByDate
-     * @return list<string>
-     */
     protected function availableUnitCodes(
         Collection $inServiceUnits,
         array $occupiedUnitIdsByDate,
@@ -328,9 +307,6 @@ class InventoryCalendar extends Page implements HasForms
         return $codes;
     }
 
-    /**
-     * @param  list<string>  $codes
-     */
     protected function availabilityTip(array $codes, string $periodMode): string
     {
         $label = $periodMode === 'month' ? 'この月に空きがある号室' : '空き号室';
@@ -346,9 +322,6 @@ class InventoryCalendar extends Page implements HasForms
         return $label.': '.$formatted;
     }
 
-    /**
-     * @param  Collection<string, Collection<int, RoomInventory>>  $inventories
-     */
     protected function cellValue(Collection $inventories, int $roomId, string $periodMode, string $column): int|string
     {
         if ($periodMode === 'month') {

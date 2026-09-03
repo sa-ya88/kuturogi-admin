@@ -8,9 +8,6 @@ use Illuminate\Support\Carbon;
 
 class CancelFeeCalculator
 {
-    /**
-     * チェックインまでの日数に応じたキャンセル料（円）。ポリシー未該当は 0。
-     */
     public function calculate(Reservation $reservation, ?Carbon $asOf = null): int
     {
         $asOf ??= now()->startOfDay();

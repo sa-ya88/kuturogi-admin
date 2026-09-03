@@ -7,11 +7,6 @@ use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
-/**
- * kuturogi 顧客サイトの Integration API クライアント。
- *
- * @see INTEGRATION.md
- */
 class KuturogiApiClient
 {
     protected function client(): PendingRequest

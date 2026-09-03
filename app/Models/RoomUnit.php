@@ -27,23 +27,7 @@ class RoomUnit extends Model
 
     public const CURRENT_UNAVAILABLE = 'unavailable';
 
-    /** 日付別ステータス: その日に予約（占有）あり */
     public const DAY_RESERVED = 'reserved';
-
-    /** @deprecated Use CURRENT_BOOKABLE */
-    public const STATUS_BOOKABLE = self::CURRENT_BOOKABLE;
-
-    /** @deprecated Use CURRENT_AWAITING_ARRIVAL */
-    public const STATUS_AWAITING_ARRIVAL = self::CURRENT_AWAITING_ARRIVAL;
-
-    /** @deprecated Use CURRENT_IN_HOUSE */
-    public const STATUS_IN_HOUSE = self::CURRENT_IN_HOUSE;
-
-    /** @deprecated Use CURRENT_NEEDS_CLEANING */
-    public const STATUS_NEEDS_CLEANING = self::CURRENT_NEEDS_CLEANING;
-
-    /** @deprecated Use CURRENT_UNAVAILABLE */
-    public const STATUS_UNAVAILABLE = self::CURRENT_UNAVAILABLE;
 
     protected $fillable = [
         'room_id',
@@ -99,9 +83,6 @@ class RoomUnit extends Model
         }
     }
 
-    /**
-     * @return array<string, string>
-     */
     public static function operationStatusOptions(): array
     {
         return [
@@ -110,11 +91,6 @@ class RoomUnit extends Model
         ];
     }
 
-    /**
-     * 編集画面用（ハウスキーピングの現在値）。
-     *
-     * @return array<string, string>
-     */
     public static function currentStatusOptions(): array
     {
         return [
@@ -126,11 +102,6 @@ class RoomUnit extends Model
         ];
     }
 
-    /**
-     * 一覧の日付別ステータス表示用（予約有を含む）。
-     *
-     * @return array<string, string>
-     */
     public static function dayStatusOptions(): array
     {
         return [
@@ -143,19 +114,6 @@ class RoomUnit extends Model
         ];
     }
 
-    /**
-     * @deprecated Use currentStatusOptions()
-     *
-     * @return array<string, string>
-     */
-    public static function statusOptions(): array
-    {
-        return self::currentStatusOptions();
-    }
-
-    /**
-     * 指定日のステータス（一覧表示用）。
-     */
     public function dayStatusForDate(Carbon|string $date): string
     {
         $dateString = Carbon::parse($date)->toDateString();
@@ -266,11 +224,6 @@ class RoomUnit extends Model
             : $this->code;
     }
 
-    /**
-     * 客室タイプに紐づくプラン + 個別客室に紐づくプランの和集合。
-     *
-     * @return Collection<int, Plan>
-     */
     public function effectivePlans(): Collection
     {
         $this->loadMissing(['room.plans', 'plans']);
@@ -284,9 +237,6 @@ class RoomUnit extends Model
             ->values();
     }
 
-    /**
-     * @return SupportCollection<int, string>
-     */
     public function effectivePlanNames(): SupportCollection
     {
         return $this->effectivePlans()->pluck('name')->filter()->values();
@@ -321,17 +271,5 @@ class RoomUnit extends Model
             self::CURRENT_UNAVAILABLE => 'danger',
             default => 'gray',
         };
-    }
-
-    /** @deprecated Use currentStatusLabel() */
-    public function statusLabel(): string
-    {
-        return $this->currentStatusLabel();
-    }
-
-    /** @deprecated Use currentStatusColor() */
-    public function statusColor(): string
-    {
-        return $this->currentStatusColor();
     }
 }

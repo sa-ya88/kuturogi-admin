@@ -140,9 +140,6 @@ class Login extends BaseLogin
         );
     }
 
-    /**
-     * @return array<Action>
-     */
     protected function getFormActions(): array
     {
         return [

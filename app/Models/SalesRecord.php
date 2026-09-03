@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class SalesRecord extends Model
 {
     public const STATUS_RECORDED = 'recorded';
+
     public const STATUS_CANCELLED = 'cancelled';
 
     protected $fillable = [

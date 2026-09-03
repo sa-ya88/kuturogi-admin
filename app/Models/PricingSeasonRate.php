@@ -39,9 +39,6 @@ class PricingSeasonRate extends Model
         ];
     }
 
-    /**
-     * @return array<string, string>
-     */
     public static function kindOptions(): array
     {
         return [
@@ -52,9 +49,6 @@ class PricingSeasonRate extends Model
         ];
     }
 
-    /**
-     * @return array<string, string>
-     */
     public static function adjustmentTypeOptions(): array
     {
         return [
@@ -63,7 +57,6 @@ class PricingSeasonRate extends Model
         ];
     }
 
-    /** 計算用の符号付き％（割引は負） */
     public function signedPercent(): int
     {
         $percent = (int) $this->percent;

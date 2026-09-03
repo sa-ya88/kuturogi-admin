@@ -4,10 +4,6 @@ namespace App\Support;
 
 class PlanChoiceOptions
 {
-    /**
-     * @param  array<int, array<string, mixed>>|null  $options
-     * @return array<int, array{prompt: string, choices: array<int, array{label: string}>}>|null
-     */
     public static function normalize(?array $options): ?array
     {
         if (empty($options)) {

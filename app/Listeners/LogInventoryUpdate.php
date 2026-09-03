@@ -5,9 +5,6 @@ namespace App\Listeners;
 use App\Events\InventoryUpdated;
 use Illuminate\Support\Facades\Log;
 
-/**
- * Phase 2: WebSocket / Filament リアルタイム更新のフックポイント。
- */
 class LogInventoryUpdate
 {
     public function handle(InventoryUpdated $event): void

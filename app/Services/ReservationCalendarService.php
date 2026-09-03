@@ -10,9 +10,6 @@ use Illuminate\Support\Collection;
 
 class ReservationCalendarService
 {
-    /**
-     * @return array<int, string>
-     */
     public function dailyColumns(string $from, string $to): array
     {
         $start = Carbon::parse($from)->startOfDay();
@@ -31,9 +28,6 @@ class ReservationCalendarService
         return $dates;
     }
 
-    /**
-     * @return array<int, string> YYYY-MM
-     */
     public function monthlyColumns(string $fromMonth, string $toMonth): array
     {
         $start = Carbon::parse($fromMonth.'-01')->startOfMonth();
@@ -52,9 +46,6 @@ class ReservationCalendarService
         return $months;
     }
 
-    /**
-     * @return Collection<int, Room|Plan>
-     */
     public function rows(string $rowMode): Collection
     {
         return match ($rowMode) {
@@ -63,9 +54,6 @@ class ReservationCalendarService
         };
     }
 
-    /**
-     * @return array{dates: array<int, string>, rows: array<int, array{label: string, row_id: int, cells: array<string, array{count: int}>}>}
-     */
     public function buildGrid(
         string $periodMode,
         string $rowMode,

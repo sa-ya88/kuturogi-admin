@@ -8,12 +8,8 @@ use Illuminate\Support\Str;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use RuntimeException;
 
-/**
- * kuturogi の public/images 配下へ客室画像を保存する。
- */
 class RoomImageStorageService
 {
-    /** @var list<string> */
     private const ALLOWED_EXTENSIONS = ['webp', 'png', 'jpeg', 'jpg'];
 
     public function imagesDirectory(): string
@@ -43,11 +39,6 @@ class RoomImageStorageService
         return '/images/'.$filename;
     }
 
-    /**
-     * @param  list<UploadedFile|TemporaryUploadedFile|string>  $items
-     * @param  list<string>  $previousImages
-     * @return list<string>
-     */
     public function syncImages(int $roomId, array $items, array $previousImages = []): array
     {
         if (count($items) > 5) {
@@ -139,9 +130,6 @@ class RoomImageStorageService
         return $publicPaths;
     }
 
-    /**
-     * @param  list<string>  $images
-     */
     public function deleteRoomImages(int $roomId, array $images = []): void
     {
         $this->deleteRoomImageFiles($roomId);
@@ -157,9 +145,6 @@ class RoomImageStorageService
         }
     }
 
-    /**
-     * @param  list<string>  $keepFilenames
-     */
     private function deleteRoomImageFiles(int $roomId, array $keepFilenames = []): void
     {
         $directory = $this->imagesDirectory();

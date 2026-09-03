@@ -8,12 +8,8 @@ use Illuminate\Support\Str;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use RuntimeException;
 
-/**
- * kuturogi の public/images 配下へプラン画像を保存する。
- */
 class PlanImageStorageService
 {
-    /** @var list<string> */
     private const ALLOWED_EXTENSIONS = ['webp', 'png', 'jpeg', 'jpg'];
 
     public function imagesDirectory(): string
@@ -43,11 +39,6 @@ class PlanImageStorageService
         return '/images/'.$filename;
     }
 
-    /**
-     * @param  list<UploadedFile|TemporaryUploadedFile|string>  $items
-     * @param  list<string>  $previousImages
-     * @return list<string>
-     */
     public function syncImages(int $planId, array $items, array $previousImages = []): array
     {
         if (count($items) > 5) {
@@ -90,7 +81,6 @@ class PlanImageStorageService
                     continue;
                 }
 
-                // 共有シード画像など、このプラン専用ファイルでない場合は移動せずコピーする
                 $sourceBasename = basename($sourcePath);
                 $isOwnedByThisPlan = (bool) preg_match('/^plan_'.$planId.'_\d+\./', $sourceBasename);
 
@@ -139,7 +129,6 @@ class PlanImageStorageService
 
             $oldBasename = basename($oldPath);
 
-            // 共有シード画像など、このプラン専用でないファイルは削除しない
             if (! preg_match('/^plan_'.$planId.'_\d+\./', $oldBasename)) {
                 continue;
             }
@@ -154,9 +143,6 @@ class PlanImageStorageService
         return $publicPaths;
     }
 
-    /**
-     * @param  list<string>  $images
-     */
     public function deletePlanImages(int $planId, array $images = []): void
     {
         $this->deletePlanImageFiles($planId);
@@ -166,7 +152,6 @@ class PlanImageStorageService
         foreach ($images as $path) {
             $basename = basename($path);
 
-            // 共有画像は他プランでも使う可能性があるため削除しない
             if (! preg_match('/^plan_'.$planId.'_\d+\./', $basename)) {
                 continue;
             }
@@ -179,9 +164,6 @@ class PlanImageStorageService
         }
     }
 
-    /**
-     * @param  list<string>  $keepFilenames
-     */
     private function deletePlanImageFiles(int $planId, array $keepFilenames = []): void
     {
         $directory = $this->imagesDirectory();

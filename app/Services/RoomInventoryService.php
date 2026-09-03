@@ -12,9 +12,6 @@ use RuntimeException;
 
 class RoomInventoryService
 {
-    /**
-     * 客室の在庫数・予約可能期間を、在庫カレンダーへ反映する。
-     */
     public function syncInventoriesForRoom(Room $room, ?RoomAvailabilitySnapshot $previous = null): int
     {
         $current = RoomAvailabilitySnapshot::fromRoom($room);
@@ -27,7 +24,6 @@ class RoomInventoryService
             throw new RuntimeException('終了日は開始日以降の日付を指定してください。');
         }
 
-        /** @var Collection<int, RoomInventory> $inventoriesToSync */
         $inventoriesToSync = collect();
 
         $this->clearInventoriesOutsideRange($room, $current, $inventoriesToSync);
@@ -45,11 +41,6 @@ class RoomInventoryService
         return $inventoriesToSync->count();
     }
 
-    /**
-     * 予約の占有状況から残室数を再計算し、在庫カレンダーへ反映する。
-     *
-     * @param  list<Room>  $rooms
-     */
     public function refreshRemainsFromOccupancy(array $rooms, Carbon $from, Carbon $to): void
     {
         foreach ($rooms as $room) {
@@ -95,25 +86,6 @@ class RoomInventoryService
         return max(0, $stock - $occupied);
     }
 
-    /**
-     * @deprecated Use syncInventoriesForRoom() instead.
-     */
-    public function applyStockCount(Room $room, ?int $previousStockCount = null): int
-    {
-        $previous = $previousStockCount === null
-            ? null
-            : new RoomAvailabilitySnapshot(
-                $previousStockCount,
-                Carbon::parse($room->available_from ?? now())->startOfDay(),
-                Carbon::parse($room->available_to ?? now()->addMonths((int) config('kuturogi.inventory_horizon_months', 12)))->startOfDay(),
-            );
-
-        return $this->syncInventoriesForRoom($room, $previous);
-    }
-
-    /**
-     * @param  Collection<int, RoomInventory>  $inventoriesToSync
-     */
     private function clearInventoriesOutsideRange(
         Room $room,
         RoomAvailabilitySnapshot $current,

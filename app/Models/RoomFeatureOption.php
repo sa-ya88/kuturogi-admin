@@ -29,9 +29,6 @@ class RoomFeatureOption extends Model
         return $query->orderBy('sort_order')->orderBy('id');
     }
 
-    /**
-     * @return array<string, string>
-     */
     public static function optionsForSelect(?Room $room = null): array
     {
         $options = static::query()

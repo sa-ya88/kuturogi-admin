@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\ReservationResource\Pages;
 
 use App\Filament\Resources\ReservationResource;
-use App\Filament\Resources\ReservationResource\Pages\ListReservations;
 use App\Services\ReservationCalendarService;
 use Filament\Actions;
 use Filament\Forms\Components\DatePicker;
@@ -30,7 +29,6 @@ class ReservationCalendar extends Page implements HasForms
 
     protected static ?string $title = '予約管理';
 
-    /** @var array{periodMode: string, rowMode: string, from: ?string, to: ?string} */
     public array $filters = [
         'periodMode' => 'day',
         'rowMode' => 'room',
@@ -201,9 +199,6 @@ class ReservationCalendar extends Page implements HasForms
         ]);
     }
 
-    /**
-     * @return array{0: string, 1: string}
-     */
     protected function appliedDateRange(): array
     {
         [$defaultFrom, $defaultTo] = $this->defaultDateRange();
@@ -223,9 +218,6 @@ class ReservationCalendar extends Page implements HasForms
         ];
     }
 
-    /**
-     * @return array{0: string, 1: string}
-     */
     protected function defaultDateRange(): array
     {
         $range = ListReservations::defaultListDateRange();

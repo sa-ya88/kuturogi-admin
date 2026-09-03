@@ -8,9 +8,6 @@ trait RemembersReservationListFilters
 {
     public const LIST_FILTER_SESSION_KEY = 'reservation_list_filters';
 
-    /**
-     * @return array{from: string, to: string}
-     */
     public static function defaultListDateRange(): array
     {
         $from = now()->subDay()->startOfDay();
@@ -21,10 +18,6 @@ trait RemembersReservationListFilters
         ];
     }
 
-    /**
-     * @param  array<string, mixed>  $filters
-     * @return array<string, string|int>
-     */
     public static function normalizeListFilters(array $filters): array
     {
         $normalized = [];
@@ -50,17 +43,11 @@ trait RemembersReservationListFilters
         return $normalized;
     }
 
-    /**
-     * @param  array<string, mixed>  $filters
-     */
     public static function rememberListFilters(array $filters): void
     {
         session([self::LIST_FILTER_SESSION_KEY => static::normalizeListFilters($filters)]);
     }
 
-    /**
-     * @return array<string, string|int>
-     */
     public static function recalledListFilters(): array
     {
         $stored = session(self::LIST_FILTER_SESSION_KEY, []);
@@ -72,9 +59,6 @@ trait RemembersReservationListFilters
         return static::normalizeListFilters($stored);
     }
 
-    /**
-     * @param  array<string, mixed>|null  $filters
-     */
     public static function reservationListUrl(?array $filters = null): string
     {
         $query = static::normalizeListFilters($filters ?? static::recalledListFilters());
@@ -82,10 +66,6 @@ trait RemembersReservationListFilters
         return ReservationResource::getUrl('list').'?'.http_build_query($query);
     }
 
-    /**
-     * @param  array<string, mixed>  $query
-     * @return array<string, mixed>
-     */
     public static function extractListFiltersFromQuery(array $query): array
     {
         return array_filter([

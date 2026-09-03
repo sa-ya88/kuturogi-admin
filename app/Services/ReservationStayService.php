@@ -6,17 +6,17 @@ use App\Models\Reservation;
 use App\Models\ReservationStay;
 use App\Models\RoomUnit;
 use App\Models\RoomUnitDateOccupancy;
+use Filament\Notifications\Notification;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
 class ReservationStayService
 {
-    /**
-     * @param  array<int, string>|null  $representatives
-     */
     public function syncStaysForReservation(Reservation $reservation, ?array $representatives = null): void
     {
         $roomCount = max(1, (int) $reservation->room_count);
@@ -57,9 +57,6 @@ class ReservationStayService
         $this->refreshStayStatus($reservation->fresh(['stays']));
     }
 
-    /**
-     * @param  array<int, string>|null  $representatives
-     */
     protected function resolveRepresentativeName(Reservation $reservation, ?array $representatives, int $index): string
     {
         if (is_array($representatives) && array_key_exists($index, $representatives)) {
@@ -116,7 +113,7 @@ class ReservationStayService
 
             if (! $unit) {
                 throw ValidationException::withMessages([
-                    'room_unit_id' => "空きのある個別客室が不足しています（客室タイプの稼働中室数と在庫を確認してください）。",
+                    'room_unit_id' => '空きのある個別客室が不足しています（客室タイプの稼働中室数と在庫を確認してください）。',
                 ]);
             }
 
@@ -201,7 +198,7 @@ class ReservationStayService
         }
 
         try {
-            return DB::transaction(function () use ($stay, $unit, $reservation) {
+            return DB::transaction(function () use ($stay, $unit) {
                 $previousUnitId = $stay->room_unit_id;
 
                 if ($previousUnitId && (int) $previousUnitId !== (int) $unit->id) {
@@ -215,7 +212,7 @@ class ReservationStayService
 
                 return $stay->fresh(['roomUnit']);
             });
-        } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
+        } catch (UniqueConstraintViolationException $e) {
             throw ValidationException::withMessages([
                 'room_unit_id' => '指定期間でこの個別客室は既に使用中です。',
             ]);
@@ -355,9 +352,6 @@ class ReservationStayService
         }
     }
 
-    /**
-     * @return list<string>
-     */
     protected function stayNightDates(Reservation $reservation): array
     {
         $from = Carbon::parse($reservation->checkin_date)->startOfDay();
@@ -417,12 +411,12 @@ class ReservationStayService
             try {
                 app(ReservationPaymentSettlementService::class)->captureAndSync($reservation);
             } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning('Auto-capture after check-in failed.', [
+                Log::warning('Auto-capture after check-in failed.', [
                     'reservation_id' => $reservation->id,
                     'error' => $e->getMessage(),
                 ]);
 
-                \Filament\Notifications\Notification::make()
+                Notification::make()
                     ->title('チェックインは完了しましたが売上確定に失敗しました')
                     ->body($e->getMessage())
                     ->warning()
@@ -455,7 +449,6 @@ class ReservationStayService
             return false;
         }
 
-        // 同一予約の別滞在行に既に割り当て済みなら不可
         $assignedToOtherStay = ReservationStay::query()
             ->where('reservation_id', $reservation->id)
             ->where('room_unit_id', $unit->id)
@@ -471,7 +464,7 @@ class ReservationStayService
             ->where('room_unit_id', $unit->id)
             ->where(function ($query) use ($dates): void {
                 foreach ($dates as $date) {
-                    // SQLite では date が datetime 保存されることがあり whereIn('Y-m-d') が不一致になる
+
                     $query->orWhereDate('date', $date);
                 }
             });
@@ -479,7 +472,7 @@ class ReservationStayService
         if ($ignoreStayId) {
             $ignoreStay = ReservationStay::query()->find($ignoreStayId);
             if ($ignoreStay && (int) $ignoreStay->room_unit_id === (int) $unit->id) {
-                // 自分の割当を付け替えるときは自予約の占有を除外
+
                 $query->where('reservation_id', '!=', $reservation->id);
             }
         }
@@ -487,9 +480,6 @@ class ReservationStayService
         return ! $query->exists();
     }
 
-    /**
-     * @return Collection<int, RoomUnit>
-     */
     public function assignableUnitsForStay(ReservationStay $stay): Collection
     {
         $reservation = $stay->reservation()->firstOrFail();

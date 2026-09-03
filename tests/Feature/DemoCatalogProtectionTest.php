@@ -74,7 +74,7 @@ class DemoCatalogProtectionTest extends TestCase
         $this->actingAs($admin)
             ->get('/admin')
             ->assertOk()
-            ->assertSee('客室・プラン・料金・スタッフなどのマスタは削除できません')
+            ->assertSee('客室、プラン、料金、スタッフなどのマスタは削除できません')
             ->assertSee('時間ごとに初期化されます');
     }
 }

@@ -6,9 +6,6 @@ use App\Models\Reservation;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
-/**
- * キャンセル時の Stripe 与信取消・返金・違約金再決済。
- */
 class ReservationPaymentSettlementService
 {
     public function __construct(
@@ -64,7 +61,7 @@ class ReservationPaymentSettlementService
                 if ($feeIntent && in_array($feeIntent->status, ['succeeded', 'requires_capture'], true)) {
                     $updates['stripe_cancel_fee_payment_intent_id'] = $feeIntent->id;
                     $updates['cancel_fee_uncollected'] = false;
-                    // 違約金を徴収できた場合も返金済＋違約金記録として扱う
+
                 } else {
                     $updates['cancel_fee_uncollected'] = true;
                 }

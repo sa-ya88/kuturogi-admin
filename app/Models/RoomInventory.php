@@ -28,10 +28,6 @@ class RoomInventory extends Model
         return $this->belongsTo(Room::class);
     }
 
-    /**
-     * room_id + date のユニーク制約を守りながら upsert する。
-     * updateOrCreate + date cast は SQLite で重複 INSERT になることがあるため明示的に処理。
-     */
     public static function upsertForRoomDate(int $roomId, string $date, int $remains, ?Carbon $syncedAt = null): self
     {
         $normalizedDate = Carbon::parse($date)->toDateString();

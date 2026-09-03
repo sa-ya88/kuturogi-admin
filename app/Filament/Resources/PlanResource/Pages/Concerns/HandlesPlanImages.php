@@ -7,7 +7,6 @@ use App\Services\PlanImageService;
 
 trait HandlesPlanImages
 {
-    /** @var array<int, mixed> */
     protected array $pendingPlanImages = [];
 
     protected function extractPlanImagesFromFormData(array $data): array
@@ -19,10 +18,6 @@ trait HandlesPlanImages
         return $data;
     }
 
-    /**
-     * @param  list<string>|null  $images
-     * @return list<string>
-     */
     protected function stripImagePathsForForm(?array $images): array
     {
         if ($images === null || $images === []) {

@@ -2,16 +2,19 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 
 class Customer extends Model
 {
     public const TYPE_MEMBER = 'member';
+
     public const TYPE_GUEST = 'guest';
 
     public const TAG_REPEATER = 'リピーター';
+
     public const TAG_VIP = 'VIP';
 
     protected $fillable = [
@@ -94,7 +97,7 @@ class Customer extends Model
             ->max('checkout_date');
 
         $this->update([
-            'last_stayed_at' => $lastCheckout ? \Illuminate\Support\Carbon::parse($lastCheckout) : null,
+            'last_stayed_at' => $lastCheckout ? Carbon::parse($lastCheckout) : null,
         ]);
 
         $this->refreshAutoTags();

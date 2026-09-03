@@ -28,7 +28,6 @@ class PricingSettings extends Page implements HasForms
 
     protected static string $view = 'filament.pages.pricing-settings';
 
-    /** @var array<string, mixed> */
     public array $data = [];
 
     public static function canAccess(): bool

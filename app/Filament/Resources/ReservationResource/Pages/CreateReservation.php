@@ -4,6 +4,7 @@ namespace App\Filament\Resources\ReservationResource\Pages;
 
 use App\Filament\Resources\ReservationResource;
 use App\Models\Customer;
+use App\Models\Reservation;
 use App\Models\SalesRecord;
 use App\Services\KuturogiSyncService;
 use App\Services\ReservationStayService;
@@ -19,9 +20,9 @@ class CreateReservation extends CreateRecord
         $data['source'] = 'admin';
         $data['adult_count'] = $data['adult_count'] ?? $data['guest_count'];
         $data['child_count'] = $data['child_count'] ?? 0;
-        $data['stay_status'] = $data['stay_status'] ?? \App\Models\Reservation::STAY_STATUS_RESERVED;
+        $data['stay_status'] = $data['stay_status'] ?? Reservation::STAY_STATUS_RESERVED;
         $data['payment_method'] = $data['payment_method'] ?? 'local';
-        $data['payment_status'] = $data['payment_status'] ?? \App\Models\Reservation::PAYMENT_UNPAID;
+        $data['payment_status'] = $data['payment_status'] ?? Reservation::PAYMENT_UNPAID;
 
         $customer = Customer::query()->find($data['customer_id'] ?? null);
 

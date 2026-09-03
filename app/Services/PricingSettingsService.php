@@ -12,9 +12,6 @@ use Illuminate\Support\Facades\Log;
 
 class PricingSettingsService
 {
-    /**
-     * @return array<string, mixed>
-     */
     public function formState(): array
     {
         $weekend = PricingWeekendRule::current();
@@ -81,9 +78,6 @@ class PricingSettingsService
         ];
     }
 
-    /**
-     * @param  array<string, mixed>  $data
-     */
     public function save(array $data): void
     {
         DB::transaction(function () use ($data): void {
@@ -122,9 +116,6 @@ class PricingSettingsService
         }
     }
 
-    /**
-     * @param  array<int, array<string, mixed>>  $rows
-     */
     protected function syncSeasonRates(array $rows): void
     {
         $keptIds = [];
@@ -163,9 +154,6 @@ class PricingSettingsService
         }
     }
 
-    /**
-     * @param  array<string, mixed>  $row
-     */
     protected function syncChildRate(array $row): void
     {
         $rate = PricingChildRate::current();
@@ -182,9 +170,6 @@ class PricingSettingsService
             ->delete();
     }
 
-    /**
-     * @param  array<int, array<string, mixed>>  $rows
-     */
     protected function syncOptionFees(array $rows): void
     {
         $keptIds = [];
@@ -216,9 +201,6 @@ class PricingSettingsService
         }
     }
 
-    /**
-     * @param  array<int, array<string, mixed>>  $rows
-     */
     protected function syncCancelRules(array $rows): void
     {
         $keptIds = [];

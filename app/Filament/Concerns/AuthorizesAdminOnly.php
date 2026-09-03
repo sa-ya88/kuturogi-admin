@@ -2,6 +2,9 @@
 
 namespace App\Filament\Concerns;
 
+use App\Support\DemoMode;
+use Illuminate\Database\Eloquent\Model;
+
 trait AuthorizesAdminOnly
 {
     public static function canViewAny(): bool
@@ -14,20 +17,20 @@ trait AuthorizesAdminOnly
         return auth()->user()?->isAdmin() ?? false;
     }
 
-    public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
+    public static function canEdit(Model $record): bool
     {
         return auth()->user()?->isAdmin() ?? false;
     }
 
-    public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
+    public static function canDelete(Model $record): bool
     {
-        return \App\Support\DemoMode::allowsDeletes()
+        return DemoMode::allowsDeletes()
             && (auth()->user()?->isAdmin() ?? false);
     }
 
     public static function canDeleteAny(): bool
     {
-        return \App\Support\DemoMode::allowsDeletes()
+        return DemoMode::allowsDeletes()
             && (auth()->user()?->isAdmin() ?? false);
     }
 }

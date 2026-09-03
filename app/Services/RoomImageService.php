@@ -17,11 +17,6 @@ class RoomImageService
         protected RoomImageStorageService $storage,
     ) {}
 
-    /**
-     * @param  array<int, UploadedFile|TemporaryUploadedFile|string>  $state
-     * @param  list<string>  $previousImages
-     * @return list<string>
-     */
     public function syncFromFormState(Room $room, array $state, array $previousImages = []): array
     {
         if (count($state) > 5) {
@@ -62,10 +57,6 @@ class RoomImageService
             && is_writable($root);
     }
 
-    /**
-     * @param  array<int, UploadedFile|TemporaryUploadedFile|string>  $state
-     * @return list<string>
-     */
     private function syncViaApi(Room $room, array $state): array
     {
         $response = $this->uploadRoomImages($room->kuturogi_room_id, $this->resolveUploadFiles($state));
@@ -74,10 +65,6 @@ class RoomImageService
         return $response->json('images') ?? [];
     }
 
-    /**
-     * @param  array<int, UploadedFile|TemporaryUploadedFile|string>  $state
-     * @return list<UploadedFile|TemporaryUploadedFile>
-     */
     private function resolveUploadFiles(array $state): array
     {
         $files = [];
@@ -123,9 +110,6 @@ class RoomImageService
         return $files;
     }
 
-    /**
-     * @param  list<UploadedFile|TemporaryUploadedFile>  $files
-     */
     public function uploadRoomImages(int $kuturogiRoomId, array $files): Response
     {
         $request = $this->apiClient->clientForMultipart();

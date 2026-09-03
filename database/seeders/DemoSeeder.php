@@ -77,9 +77,6 @@ class DemoSeeder extends Seeder
         );
     }
 
-    /**
-     * @param  list<Room>  $rooms
-     */
     private function seedInventories(array $rooms): void
     {
         $from = Carbon::today();
@@ -107,9 +104,6 @@ class DemoSeeder extends Seeder
         }
     }
 
-    /**
-     * @return array{total: int, members: int, repeaters: int, vips: int}
-     */
     private function segmentCounts(int $slotCount): array
     {
         $total = 10;
@@ -127,10 +121,6 @@ class DemoSeeder extends Seeder
         ];
     }
 
-    /**
-     * @param  array{total: int, members: int, repeaters: int, vips: int}  $counts
-     * @return list<Customer>
-     */
     private function seedCustomers(array $counts): array
     {
         $customers = [];
@@ -197,19 +187,6 @@ class DemoSeeder extends Seeder
         );
     }
 
-    /**
-     * @param  array{total: int, members: int, repeaters: int, vips: int}  $counts
-     * @return list<array{
-     *     type: string,
-     *     name: string,
-     *     name_kana: string,
-     *     email: string,
-     *     tel: string,
-     *     zip_code: string,
-     *     address: string,
-     *     notes: string
-     * }>
-     */
     private function customerDefinitions(array $counts): array
     {
         $surnames = [
@@ -272,12 +249,6 @@ class DemoSeeder extends Seeder
             ->update(['current_status' => RoomUnit::CURRENT_BOOKABLE]);
     }
 
-    /**
-     * @param  list<Room>  $rooms
-     * @param  list<Customer>  $customers
-     * @param  array{total: int, members: int, repeaters: int, vips: int}  $counts
-     * @param  list<array{room: Room, unit: RoomUnit, plan: Plan, checkin: Carbon}>  $slots
-     */
     private function seedReservations(
         array $rooms,
         array $customers,
@@ -316,10 +287,6 @@ class DemoSeeder extends Seeder
         $this->refreshCustomerStats($customers);
     }
 
-    /**
-     * @param  list<Room>  $rooms
-     * @return list<array{room: Room, unit: RoomUnit, plan: Plan, checkin: Carbon}>
-     */
     private function occupancySlots(array $rooms, Carbon $from, Carbon $until): array
     {
         $roomsById = [];
@@ -363,12 +330,6 @@ class DemoSeeder extends Seeder
         return $plans->random();
     }
 
-    /**
-     * @param  list<array{room: Room, unit: RoomUnit, plan: Plan, checkin: Carbon}>  $slots
-     * @param  list<Customer>  $customers
-     * @param  array{total: int, members: int, repeaters: int, vips: int}  $counts
-     * @return list<array{customer: Customer, room: Room, unit: RoomUnit, plan: Plan, checkin: Carbon}>
-     */
     private function assignSlotsToCustomers(array $slots, array $customers, array $counts): array
     {
         $vips = array_slice($customers, 0, $counts['vips']);
@@ -446,9 +407,6 @@ class DemoSeeder extends Seeder
         return $assignments;
     }
 
-    /**
-     * @param  list<array{room: Room, unit: RoomUnit, plan: Plan, checkin: Carbon}>  $slots
-     */
     private function indexOfSlotWithinSpend(array $slots, int $spent): ?int
     {
         foreach ($slots as $index => $slot) {
@@ -497,11 +455,6 @@ class DemoSeeder extends Seeder
         return $reservation->fresh();
     }
 
-    /**
-     * @param  list<Customer>  $customers
-     * @param  list<Reservation>  $created
-     * @return list<Reservation>
-     */
     private function seedTodayCheckouts(
         ReservationStayService $stayService,
         array $customers,
@@ -547,9 +500,6 @@ class DemoSeeder extends Seeder
         return $nights * 2 * ((int) $room->price_per_person + (int) $plan->price_per_person);
     }
 
-    /**
-     * @param  list<Reservation>  $reservations
-     */
     private function recordSales(array $reservations): void
     {
         foreach ($reservations as $reservation) {
@@ -599,9 +549,6 @@ class DemoSeeder extends Seeder
         }
     }
 
-    /**
-     * @param  list<Customer>  $customers
-     */
     private function refreshCustomerStats(array $customers): void
     {
         foreach ($customers as $customer) {
@@ -609,19 +556,6 @@ class DemoSeeder extends Seeder
         }
     }
 
-    /**
-     * @param  array{
-     *     customer: Customer,
-     *     room: Room,
-     *     plan: Plan,
-     *     checkin: Carbon,
-     *     checkout: Carbon,
-     *     total: int,
-     *     status?: string,
-     *     payment_status?: string,
-     *     paid_at?: Carbon|null
-     * }  $data
-     */
     private function createReservation(array $data): Reservation
     {
         return Reservation::query()->create([

@@ -45,7 +45,6 @@ class EditRoom extends EditRecord
             $this->record->images ?? []
         );
 
-        // 在庫数は個別客室（稼働中）から算出。フォームでは変更しない。
         $data['stock_count'] = $this->record->inServiceUnitsCount();
         $data['details'] = RoomDetails::normalize($data['details'] ?? []);
 

@@ -15,9 +15,6 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-/**
- * kuturogi ↔ kuturogi-admin 間のデータ同期を担うサービス。
- */
 class KuturogiSyncService
 {
     public function __construct(
@@ -167,9 +164,6 @@ class KuturogiSyncService
         return $count;
     }
 
-    /**
-     * kuturogi 会員（users）を CRM に同期。
-     */
     public function syncCustomers(?string $since = null): int
     {
         if ($this->usesSharedDatabase()) {
@@ -192,9 +186,6 @@ class KuturogiSyncService
         return $count;
     }
 
-    /**
-     * 予約データからゲスト顧客を抽出・紐付け。
-     */
     public function syncGuestsFromReservations(): int
     {
         $count = 0;
@@ -238,9 +229,6 @@ class KuturogiSyncService
         ];
     }
 
-    /**
-     * 社内で作成した予約を kuturogi へ送信し、在庫をブロックする。
-     */
     public function pushReservationToKuturogi(Reservation $reservation): Reservation
     {
         if ($this->usesSharedDatabase()) {
@@ -289,9 +277,6 @@ class KuturogiSyncService
         return $reservation->fresh();
     }
 
-    /**
-     * kuturogi 側の予約をキャンセルし、在庫を復元する。
-     */
     public function cancelOnKuturogi(Reservation $reservation): Reservation
     {
         $settlement = app(ReservationPaymentSettlementService::class);
@@ -322,9 +307,6 @@ class KuturogiSyncService
         return $reservation->fresh();
     }
 
-    /**
-     * kuturogi からの予約 Webhook ペイロードを取り込む。
-     */
     public function importReservation(array $payload): Reservation
     {
         return DB::transaction(function () use ($payload) {
@@ -489,9 +471,6 @@ class KuturogiSyncService
         event(new InventoryUpdated($inventory));
     }
 
-    /**
-     * @param  Collection<int, RoomInventory>  $inventories
-     */
     public function pushInventoriesToKuturogi(Room $room, Collection $inventories): void
     {
         if ($this->usesSharedDatabase()) {
@@ -526,9 +505,6 @@ class KuturogiSyncService
             ->update(['synced_at' => now()]);
     }
 
-    /**
-     * 客室を kuturogi へ新規登録または更新する。
-     */
     public function pushRoomToKuturogi(Room $room): Room
     {
         if ($this->usesSharedDatabase()) {
@@ -576,11 +552,6 @@ class KuturogiSyncService
         return $room->fresh();
     }
 
-    /**
-     * admin に紐付いていない kuturogi 客室を削除する。予約がある場合は非公開にする。
-     *
-     * @return array{deleted: int, unpublished: int}
-     */
     public function pruneUnlinkedKuturogiRooms(): array
     {
         if ($this->usesSharedDatabase()) {
@@ -643,9 +614,6 @@ class KuturogiSyncService
         return null;
     }
 
-    /**
-     * プランを kuturogi へ新規登録または更新する。
-     */
     public function pushPlanToKuturogi(Plan $plan): Plan
     {
         if ($this->usesSharedDatabase()) {
@@ -727,11 +695,6 @@ class KuturogiSyncService
         $this->pruneUnlinkedKuturogiPlans();
     }
 
-    /**
-     * admin に紐付いていない kuturogi プランを削除する。予約がある場合は客室紐付けを外して非表示にする。
-     *
-     * @return array{deleted: int, detached: int}
-     */
     public function pruneUnlinkedKuturogiPlans(): array
     {
         if ($this->usesSharedDatabase()) {
@@ -911,11 +874,6 @@ class KuturogiSyncService
         return null;
     }
 
-    /**
-     * admin の客室・在庫・予約で kuturogi を上書きする。
-     *
-     * @return array{rooms: int, plans: int, reservations: int, inventories: int}
-     */
     public function overwriteKuturogiFromAdmin(): array
     {
         if ($this->usesSharedDatabase()) {

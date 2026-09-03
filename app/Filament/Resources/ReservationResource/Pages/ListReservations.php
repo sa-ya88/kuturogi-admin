@@ -179,9 +179,6 @@ class ListReservations extends ListRecords
             || filled($this->filterPlanId);
     }
 
-    /**
-     * @param  array<string, mixed>  $filters
-     */
     protected function applyFilters(array $filters): void
     {
         $this->filterDate = isset($filters['date']) ? (string) $filters['date'] : null;
@@ -192,9 +189,6 @@ class ListReservations extends ListRecords
         $this->filterPlanId = isset($filters['plan_id']) ? (int) $filters['plan_id'] : null;
     }
 
-    /**
-     * @return array<string, string|int>
-     */
     protected function currentFilterQuery(): array
     {
         return array_filter([

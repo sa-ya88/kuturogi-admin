@@ -3,8 +3,6 @@
 namespace App\Services;
 
 use App\Models\Plan;
-use Illuminate\Http\UploadedFile;
-use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use RuntimeException;
 
 class PlanImageService
@@ -13,11 +11,6 @@ class PlanImageService
         protected PlanImageStorageService $storage,
     ) {}
 
-    /**
-     * @param  array<int, UploadedFile|TemporaryUploadedFile|string>  $state
-     * @param  list<string>  $previousImages
-     * @return list<string>
-     */
     public function syncFromFormState(Plan $plan, array $state, array $previousImages = []): array
     {
         if (count($state) > 5) {

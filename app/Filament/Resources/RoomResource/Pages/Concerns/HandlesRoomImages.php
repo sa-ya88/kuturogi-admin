@@ -2,9 +2,11 @@
 
 namespace App\Filament\Resources\RoomResource\Pages\Concerns;
 
+use App\Models\Room;
+use App\Services\RoomImageService;
+
 trait HandlesRoomImages
 {
-    /** @var array<int, mixed> */
     protected array $pendingRoomImages = [];
 
     protected function extractRoomImagesFromFormData(array $data): array
@@ -16,10 +18,6 @@ trait HandlesRoomImages
         return $data;
     }
 
-    /**
-     * @param  list<string>|null  $images
-     * @return list<string>
-     */
     protected function stripImagePathsForForm(?array $images): array
     {
         if ($images === null || $images === []) {
@@ -32,13 +30,13 @@ trait HandlesRoomImages
         );
     }
 
-    protected function persistPendingRoomImages(\App\Models\Room $room): void
+    protected function persistPendingRoomImages(Room $room): void
     {
         if ($this->pendingRoomImages === []) {
             return;
         }
 
-        $images = app(\App\Services\RoomImageService::class)->syncFromFormState(
+        $images = app(RoomImageService::class)->syncFromFormState(
             $room,
             $this->pendingRoomImages,
             $room->images ?? []

@@ -20,9 +20,6 @@ class StripePaymentService
         return filled($secret) && str_starts_with((string) $secret, 'sk_test_');
     }
 
-    /**
-     * ポートフォリオ公開用のため、テストモードのキー以外は拒否する。
-     */
     public static function assertTestModeKeys(?string $secret = null, ?string $key = null): void
     {
         $secret ??= config('services.stripe.secret');

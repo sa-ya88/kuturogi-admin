@@ -10,12 +10,17 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class Reservation extends Model
 {
     public const STATUS_PENDING = 'pending';
+
     public const STATUS_CONFIRMED = 'confirmed';
+
     public const STATUS_CANCELLED = 'cancelled';
 
     public const STAY_STATUS_RESERVED = 'reserved';
+
     public const STAY_STATUS_PARTIALLY_IN_HOUSE = 'partially_in_house';
+
     public const STAY_STATUS_IN_HOUSE = 'in_house';
+
     public const STAY_STATUS_CHECKED_OUT = 'checked_out';
 
     public const PAYMENT_UNPAID = 'unpaid';
@@ -106,9 +111,6 @@ class Reservation extends Model
         return $this->hasOne(SalesRecord::class);
     }
 
-    /**
-     * ゲストサイトの予約確認と同じ番号（reservations.id）。
-     */
     public function numberForDisplay(): string
     {
         return '#'.$this->id;

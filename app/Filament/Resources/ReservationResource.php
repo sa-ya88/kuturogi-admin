@@ -278,7 +278,7 @@ class ReservationResource extends Resource
 
     public static function canDelete(Model $record): bool
     {
-        if (! \App\Support\DemoMode::allowsDeletes()) {
+        if (! DemoMode::allowsDeletes()) {
             return false;
         }
 
@@ -287,7 +287,7 @@ class ReservationResource extends Resource
 
     public static function canDeleteAny(): bool
     {
-        if (! \App\Support\DemoMode::allowsDeletes()) {
+        if (! DemoMode::allowsDeletes()) {
             return false;
         }
 
