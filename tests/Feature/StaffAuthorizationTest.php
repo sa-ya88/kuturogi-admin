@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Filament\Pages\PricingSettings;
+use App\Filament\Resources\NewsResource;
 use App\Filament\Resources\ReservationResource;
 use App\Filament\Resources\ReservationResource\Pages\EditReservation;
 use App\Filament\Resources\RoomDetailOptionResource;
@@ -44,6 +45,10 @@ class StaffAuthorizationTest extends TestCase
         $this->assertFalse(RoomFeatureOptionResource::canViewAny());
         $this->assertFalse(RoomDetailOptionResource::canViewAny());
         $this->assertFalse(PricingSettings::canAccess());
+        $this->assertTrue(NewsResource::canViewAny());
+        $this->assertFalse(NewsResource::canCreate());
+        $this->get('/admin/news')->assertOk();
+        $this->get('/admin/news/create')->assertForbidden();
     }
 
     public function test_admin_can_access_admin_only_screens(): void
@@ -62,6 +67,10 @@ class StaffAuthorizationTest extends TestCase
         $this->assertTrue(RoomFeatureOptionResource::canViewAny());
         $this->assertTrue(RoomDetailOptionResource::canViewAny());
         $this->assertTrue(PricingSettings::canAccess());
+        $this->assertTrue(NewsResource::canViewAny());
+        $this->assertTrue(NewsResource::canCreate());
+        $this->get('/admin/news')->assertOk();
+        $this->get('/admin/news/create')->assertOk();
     }
 
     public function test_staff_cannot_delete_reservations(): void

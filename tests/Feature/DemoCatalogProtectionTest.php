@@ -3,11 +3,13 @@
 namespace Tests\Feature;
 
 use App\Filament\Resources\CustomerResource;
+use App\Filament\Resources\NewsResource;
 use App\Filament\Resources\PlanResource;
 use App\Filament\Resources\ReservationResource;
 use App\Filament\Resources\RoomResource;
 use App\Filament\Resources\UserResource;
 use App\Models\Customer;
+use App\Models\News;
 use App\Models\Plan;
 use App\Models\Reservation;
 use App\Models\Room;
@@ -42,6 +44,11 @@ class DemoCatalogProtectionTest extends TestCase
             'email' => 'taro@example.com',
             'type' => Customer::TYPE_GUEST,
         ]);
+        $news = News::query()->create([
+            'title' => 'テストお知らせ',
+            'content' => 'デモ削除禁止の確認用です。',
+            'published_at' => now()->toDateString(),
+        ]);
         $reservation = Reservation::query()->create([
             'room_id' => $room->id,
             'plan_id' => $plan->id,
@@ -63,6 +70,7 @@ class DemoCatalogProtectionTest extends TestCase
         $this->assertFalse(UserResource::canDeleteAny());
         $this->assertFalse(CustomerResource::canDelete($customer));
         $this->assertFalse(ReservationResource::canDelete($reservation));
+        $this->assertFalse(NewsResource::canDelete($news));
     }
 
     public function test_demo_banner_explains_reset_and_delete_policy(): void

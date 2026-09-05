@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Customer;
+use App\Models\News;
 use App\Models\Reservation;
 use App\Models\Room;
 use App\Models\RoomInventory;
@@ -44,6 +45,11 @@ class DemoSeederTest extends TestCase
         $this->assertFalse(
             Customer::query()->where('email', 'like', '%gmail.com')->exists()
         );
+
+        $this->assertGreaterThanOrEqual(3, News::query()->count());
+        $this->assertDatabaseHas('news', [
+            'title' => '春の特別会席のご案内',
+        ]);
 
         $this->assertTrue(Reservation::query()->where('source', 'demo')->exists());
         $this->assertGreaterThanOrEqual(
