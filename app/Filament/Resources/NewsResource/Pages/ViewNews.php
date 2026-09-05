@@ -14,6 +14,7 @@ class ViewNews extends ViewRecord
     {
         return [
             Actions\EditAction::make(),
+            Actions\DeleteAction::make(),
         ];
     }
 }

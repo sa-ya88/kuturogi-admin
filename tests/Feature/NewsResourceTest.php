@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\NewsResource;
 use App\Filament\Resources\NewsResource\Pages\CreateNews;
 use App\Filament\Resources\NewsResource\Pages\EditNews;
+use App\Filament\Resources\NewsResource\Pages\ListNews;
 use App\Models\News;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -64,5 +66,51 @@ class NewsResourceTest extends TestCase
 
         Livewire::test(CreateNews::class)
             ->assertForbidden();
+    }
+
+    public function test_admin_can_delete_news_even_in_demo_mode(): void
+    {
+        config(['app.demo_mode' => true]);
+
+        $admin = User::factory()->create([
+            'role' => User::ROLE_ADMIN,
+        ]);
+        $news = News::query()->create([
+            'title' => '削除するお知らせ',
+            'content' => 'この投稿は削除できます。',
+            'published_at' => now()->toDateString(),
+        ]);
+
+        $this->actingAs($admin);
+
+        $this->assertTrue(NewsResource::canDelete($news));
+        $this->assertTrue(NewsResource::canDeleteAny());
+
+        Livewire::test(ListNews::class)
+            ->assertTableActionVisible('delete', $news)
+            ->callTableAction('delete', $news);
+
+        $this->assertDatabaseMissing('news', [
+            'id' => $news->id,
+        ]);
+    }
+
+    public function test_staff_cannot_delete_news(): void
+    {
+        $staff = User::factory()->create([
+            'role' => User::ROLE_STAFF,
+        ]);
+        $news = News::query()->create([
+            'title' => '閲覧のみのお知らせ',
+            'content' => 'スタッフは削除できません。',
+            'published_at' => now()->toDateString(),
+        ]);
+
+        $this->actingAs($staff);
+
+        $this->assertFalse(NewsResource::canDelete($news));
+
+        Livewire::test(ListNews::class)
+            ->assertTableActionHidden('delete', $news);
     }
 }

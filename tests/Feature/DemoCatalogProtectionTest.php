@@ -70,7 +70,7 @@ class DemoCatalogProtectionTest extends TestCase
         $this->assertFalse(UserResource::canDeleteAny());
         $this->assertFalse(CustomerResource::canDelete($customer));
         $this->assertFalse(ReservationResource::canDelete($reservation));
-        $this->assertFalse(NewsResource::canDelete($news));
+        $this->assertTrue(NewsResource::canDelete($news));
     }
 
     public function test_demo_banner_explains_reset_and_delete_policy(): void
