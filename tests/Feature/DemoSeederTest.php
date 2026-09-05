@@ -46,10 +46,23 @@ class DemoSeederTest extends TestCase
             Customer::query()->where('email', 'like', '%gmail.com')->exists()
         );
 
-        $this->assertGreaterThanOrEqual(3, News::query()->count());
-        $this->assertDatabaseHas('news', [
-            'title' => '春の特別会席のご案内',
-        ]);
+        $this->assertSame(2, News::query()->count());
+        $this->assertSame(
+            ['春の特別会席のご案内', '全館休館日のお知らせ'],
+            News::query()->orderBy('published_at')->pluck('title')->all()
+        );
+        $this->assertSame(
+            '2026-06-01',
+            News::query()->where('title', '春の特別会席のご案内')->first()?->published_at?->toDateString()
+        );
+        $this->assertSame(
+            '2026-07-23',
+            News::query()->where('title', '全館休館日のお知らせ')->first()?->published_at?->toDateString()
+        );
+        $this->assertStringContainsString(
+            '春の特別会席プラン',
+            (string) News::query()->where('title', '春の特別会席のご案内')->value('content')
+        );
 
         $this->assertTrue(Reservation::query()->where('source', 'demo')->exists());
         $this->assertGreaterThanOrEqual(
@@ -147,6 +160,13 @@ class DemoSeederTest extends TestCase
 
         $customerCount = Customer::query()->count();
         $reservationCount = Reservation::query()->where('source', 'demo')->count();
+        $newsCount = News::query()->count();
+
+        News::query()->create([
+            'title' => '一時的なお知らせ',
+            'content' => '初期化で消える投稿です。',
+            'published_at' => Carbon::today()->toDateString(),
+        ]);
 
         $this->seed(DemoSeeder::class);
 
@@ -155,6 +175,10 @@ class DemoSeederTest extends TestCase
             $reservationCount,
             Reservation::query()->where('source', 'demo')->count()
         );
+        $this->assertSame($newsCount, News::query()->count());
+        $this->assertDatabaseMissing('news', [
+            'title' => '一時的なお知らせ',
+        ]);
     }
 
     public function test_demo_seeder_inventory_remains_match_occupancy(): void

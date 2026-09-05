@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\Customer;
-use App\Models\News;
 use App\Models\Plan;
 use App\Models\Reservation;
 use App\Models\Room;
@@ -38,7 +37,7 @@ class DemoSeeder extends Seeder
         $this->seedUsers();
         $this->seedSiteDemoGuest();
         $this->call(PropertyCatalogSeeder::class);
-        $this->seedNews();
+        $this->call(NewsSeeder::class);
 
         $rooms = Room::query()->orderBy('sort_order')->with('plans')->get()->all();
 
@@ -77,34 +76,6 @@ class DemoSeeder extends Seeder
                 'role' => User::ROLE_STAFF,
             ]
         );
-    }
-
-    private function seedNews(): void
-    {
-        $items = [
-            [
-                'title' => '春の特別会席のご案内',
-                'content' => '旬の山菜をふんだんに使用した、この時期だけの特別なコースをご用意しました。',
-                'published_at' => Carbon::today()->subDays(5)->toDateString(),
-            ],
-            [
-                'title' => '全館休館日のお知らせ',
-                'content' => '設備点検のため、来月10日は休館とさせていただきます。ご予約の際はご注意ください。',
-                'published_at' => Carbon::today()->subDays(2)->toDateString(),
-            ],
-            [
-                'title' => '客室リニューアル完了のお知らせ',
-                'content' => '露天風呂付客室の内装を一新し、ご滞在いただけるようになりました。',
-                'published_at' => Carbon::today()->toDateString(),
-            ],
-        ];
-
-        foreach ($items as $item) {
-            News::query()->updateOrCreate(
-                ['title' => $item['title']],
-                $item
-            );
-        }
     }
 
     private function seedInventories(array $rooms): void
